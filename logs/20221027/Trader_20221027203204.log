@@ -1,0 +1,55 @@
+INFO:root:Trader Script Started at 2022-10-27 20:32:04
+INFO:root:Creating Database Connection
+INFO:root:Connection Details: 
+INFO:root:<connection object at 0x105e9deb0; dsn: 'user=agrishabh host=localhost port=5432 dbname=agrishabh', closed: 0>
+INFO:root:Creating Binance Connection
+INFO:root:Created Binance Connection
+INFO:root:Checking Existing Positions from Database
+INFO:root:Running the sql query: select id from positions where position_status = 'OPEN'
+INFO:root:Fetched the following position ids
+INFO:root:[47, 43, 44, 45]
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 47
+INFO:root:Symbol     : EOSUSDT
+INFO:root:Getting Position risk from API.
+INFO:root:Current Margin is 0.0. Position is closed.
+INFO:root:Getting Order information from API for Profit Order Id 17339017541
+INFO:root:Profit order id %s is filled. Position Closed on its own.
+INFO:root:Cancelling the limit order.
+INFO:root:Closing the position record.
+INFO:root:PNL    : 2.4156
+INFO:root:FEE    : 0.19790352
+INFO:root:NET_PNL: 2.21769648
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 43
+INFO:root:Symbol     : APTUSDT
+INFO:root:Getting Position risk from API.
+INFO:root:Position is not closed.
+INFO:root:Limit order id 306377299 is filled
+INFO:root:Closing the previous profit order and creating new for updated quantity
+INFO:root:Ratio of current margin and starting margin is not 3, hence creating another limit order.
+INFO:root:Position updated with following
+INFO:root:Position Id: 43
+INFO:root:Symbol     : APTUSDT
+INFO:root:Margin     : 37.2364041
+INFO:root:Quantity   : 40.4
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 44
+INFO:root:Symbol     : FILUSDT
+INFO:root:Getting Position risk from API.
+INFO:root:Position is not closed.
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 45
+INFO:root:Symbol     : COTIUSDT
+INFO:root:Getting Position risk from API.
+INFO:root:Position is not closed.
+INFO:root:Checking if we can create New Positions: 
+INFO:root:Wallet Utilization: 17.408095265249354
+INFO:root:Checking if new positions need to be created
+INFO:root:Total new positions need to be created: 1
+INFO:root:Created following position
+INFO:root:Position Id: 48
+INFO:root:Symbol     : ZECUSDT
+INFO:root:Leverage   : 10
+INFO:root:Margin     : 25.00012638
+INFO:root:Quantity   : 4.575

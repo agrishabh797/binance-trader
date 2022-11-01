@@ -1,0 +1,14 @@
+INFO:root:Trader Script Started at 2022-10-27 17:15:01
+INFO:root:Creating Database Connection
+INFO:root:Connection Details: 
+INFO:root:<connection object at 0x1039f8eb0; dsn: 'user=agrishabh host=localhost port=5432 dbname=agrishabh', closed: 0>
+INFO:root:Creating Binance Connection
+INFO:root:Created Binance Connection
+INFO:root:Checking Existing Positions from Database
+INFO:root:Running the sql query: select id from positions where position_status = 'OPEN'
+INFO:root:Fetched the following position ids
+INFO:root:[45, 47, 43, 44]
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 45
+INFO:root:Symbol     : COTIUSDT
+INFO:root:Getting Position risk from API.

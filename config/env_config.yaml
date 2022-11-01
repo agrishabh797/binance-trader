@@ -1,0 +1,3 @@
+LOG_BASE_DIRECTORY: /Users/agrishabh/PycharmProjects/BinanceFutTrader/logs
+DATABASE_IDENTIFIER: POSTGRES_DB
+POSITIONS: 4

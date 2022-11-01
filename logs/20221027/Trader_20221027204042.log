@@ -1,0 +1,48 @@
+INFO:root:Trader Script Started at 2022-10-27 20:40:42
+INFO:root:Creating Database Connection
+INFO:root:Connection Details: 
+INFO:root:<connection object at 0x1017f9eb0; dsn: 'user=agrishabh host=localhost port=5432 dbname=agrishabh', closed: 0>
+INFO:root:Creating Binance Connection
+INFO:root:Created Binance Connection
+INFO:root:Checking Existing Positions from Database
+INFO:root:Running the sql query: select id from positions where position_status = 'OPEN'
+INFO:root:Fetched the following position ids
+INFO:root:[43, 44, 45, 48]
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 43
+INFO:root:Symbol     : APTUSDT
+INFO:root:Getting Position risk from API.
+INFO:root:Current Margin is 0.0. Position is closed.
+INFO:root:Getting Order information from API for Profit Order Id 314647587
+INFO:root:Profit order id %s is not filled. Position Closed manually.
+INFO:root:Cancelling the limit order and profit order.
+INFO:root:Position closed with order id 314864191.
+INFO:root:Closing the position record.
+INFO:root:PNL    : 1.3337
+INFO:root:FEE    : 0.2735939
+INFO:root:NET_PNL: 1.0601061
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 44
+INFO:root:Symbol     : FILUSDT
+INFO:root:Getting Position risk from API.
+INFO:root:Position is not closed.
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 45
+INFO:root:Symbol     : COTIUSDT
+INFO:root:Getting Position risk from API.
+INFO:root:Position is not closed.
+INFO:root:Checking the status for following Position
+INFO:root:Position id: 48
+INFO:root:Symbol     : ZECUSDT
+INFO:root:Getting Position risk from API.
+INFO:root:Position is not closed.
+INFO:root:Checking if we can create New Positions: 
+INFO:root:Wallet Utilization: 14.926598003830968
+INFO:root:Checking if new positions need to be created
+INFO:root:Total new positions need to be created: 1
+INFO:root:Created following position
+INFO:root:Position Id: 49
+INFO:root:Symbol     : IMXUSDT
+INFO:root:Leverage   : 10
+INFO:root:Margin     : 24.91964112
+INFO:root:Quantity   : 404.0

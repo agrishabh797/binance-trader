@@ -1,0 +1,11 @@
+POSTGRES_DB:
+    HOST_NAME: localhost
+    PORT: 5432
+    DATABASE_NAME: agrishabh
+    USER: agrishabh
+    PASSWORD:
+
+BINANCE_KEY:
+    API_KEY: aOqjGknQgx6w4LYYyR7YmUukWYWkkQtML6GhJDeeW3gYKn9KPPXvfFYRu6tdjbI8
+    SECRET_KEY: rIUAofHAvXd9pTCqg8TVqJLAX9IWSQOxsTC7kEUkLR74hjqqRPzUk12DSLa9xDYx
+
