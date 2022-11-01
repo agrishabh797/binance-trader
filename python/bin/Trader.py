@@ -554,7 +554,7 @@ def main():
     current_date = current_time.strftime('%Y-%m-%d')
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
-    workspace_dir = '/Users/agrishabh/PycharmProjects/binance-trader'
+    workspace_dir = '~/binance-trader'
 
     config_file = workspace_dir + '/config/env_config.yaml'
     connections_file = workspace_dir + '/config/connections.yaml'
