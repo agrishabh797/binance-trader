@@ -1,9 +1,9 @@
 POSTGRES_DB:
-    HOST_NAME: localhost
+    HOST_NAME: agrishabh.capbmt0rqvdd.us-east-1.rds.amazonaws.com
     PORT: 5432
     DATABASE_NAME: agrishabh
     USER: agrishabh
-    PASSWORD:
+    PASSWORD: agrishabh
 
 BINANCE_KEY:
     API_KEY: aOqjGknQgx6w4LYYyR7YmUukWYWkkQtML6GhJDeeW3gYKn9KPPXvfFYRu6tdjbI8

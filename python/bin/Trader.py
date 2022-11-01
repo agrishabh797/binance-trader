@@ -474,6 +474,47 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     logging.info("Quantity   : %s", str(position_quantity))
 
 
+def check_and_update_symbols(conn, um_futures_client):
+
+    current_time = datetime.now()
+    current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
+
+    exchange_info = um_futures_client.exchange_info()
+    incoming_symbol_list = []
+    for position in exchange_info['symbols']:
+        if position['symbol'].endswith('USDT') and position['status'] == 'TRADING':
+            incoming_symbol_list.append(position['symbol'])
+
+    sql = "select symbol_name from symbols"
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    existing_symbols = cursor.fetchall()
+    existing_symbols_list = [x[0] for x in existing_symbols]
+
+    new_symbols = list(set(incoming_symbol_list) - set(existing_symbols_list))
+
+    record_tuples = []
+    for symbol in new_symbols:
+        record = (symbol, 'Y', current_timestamp, current_timestamp)
+        record_tuples.append(record)
+
+    cursor = conn.cursor()
+    cursor.executemany("INSERT INTO symbols VALUES(%s,%s,%s,%s)", record_tuples)
+    conn.commit()
+
+    inactive_symbols = list(set(existing_symbols_list) - set(incoming_symbol_list))
+    if inactive_symbols:
+        sql = """update symbols set is_active = 'N', updated_ts = '{}' where symbol_name in {}""".format(current_timestamp, tuple(incoming_symbol_list))
+        cursor.execute(sql)
+        conn.commit()
+
+    common_symbols = list(set(existing_symbols_list) & set(incoming_symbol_list))
+    if common_symbols:
+        sql = """update symbols set is_active = 'Y', updated_ts = '{}' where symbol_name in {} and is_active = 'N'""".format(current_timestamp, tuple(common_symbols))
+        cursor.execute(sql)
+        conn.commit()
+
+
 def create_new_positions(total_positions, conn, um_futures_client):
     sql_buy = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'BUY'"
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
@@ -513,7 +554,7 @@ def main():
     current_date = current_time.strftime('%Y-%m-%d')
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
-    workspace_dir = '/Users/agrishabh/PycharmProjects/BinanceFutTrader'
+    workspace_dir = '/Users/agrishabh/PycharmProjects/binance-trader'
 
     config_file = workspace_dir + '/config/env_config.yaml'
     connections_file = workspace_dir + '/config/connections.yaml'
@@ -552,6 +593,8 @@ def main():
 
     logging.info("Created Binance Connection")
 
+    check_and_update_symbols(conn, um_futures_client)
+    exit(0)
     logging.info("Checking Existing Positions from Database")
     position_ids = get_existing_positions(conn)
 
