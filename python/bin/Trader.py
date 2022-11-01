@@ -553,9 +553,10 @@ def main():
     current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
-    workspace_dir = '~/binance-trader'
+    home_dir = os.path.expanduser('~')
+    workspace_dir = home_dir + '/binance-trader'
     config_file = workspace_dir + '/config/env_config.yaml'
-    connections_file = '~/.secure/connections.yaml'
+    connections_file = home_dir + '/.secure/connections.yaml'
     configs = read_env(config_file)
 
     log_base_directory = configs["LOG_BASE_DIRECTORY"]
@@ -592,7 +593,6 @@ def main():
     logging.info("Created Binance Connection")
 
     check_and_update_symbols(conn, um_futures_client)
-    exit(0)
     logging.info("Checking Existing Positions from Database")
     position_ids = get_existing_positions(conn)
 
