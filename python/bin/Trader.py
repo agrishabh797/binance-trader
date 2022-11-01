@@ -33,7 +33,7 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     margin_to_add = float(starting_margin / 2)
 
     purchase_qty = float((margin_to_add * leverage) / loss_mark_price)
-    purchase_qty = round(purchase_qty, int(exchange_info["quantityPrecision"]))
+    purchase_qty = get_rounded_qunatity(symbol, purchase_qty, um_futures_client)
 
     response_mp = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response_mp['markPrice'])
@@ -410,6 +410,18 @@ def get_rounded_price(symbol, price, um_futures_client):
     return round_step_size(price, get_tick_size(symbol, um_futures_client))
 
 
+def get_lot_size(symbol, um_futures_client):
+    info = um_futures_client.exchange_info()
+
+    for symbol_info in info['symbols']:
+        if symbol_info['symbol'] == symbol:
+            for symbol_filter in symbol_info['filters']:
+                if symbol_filter['filterType'] == 'LOT_SIZE':
+                    return float(symbol_filter['stepSize'])
+
+def get_rounded_qunatity(symbol, price, um_futures_client):
+    return round_step_size(price, get_lot_size(symbol, um_futures_client))
+
 def create_position(symbol, side, each_position_amount, conn, um_futures_client):
 
     leverage = 10
@@ -420,7 +432,7 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     response = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response['markPrice'])
     purchase_qty = float((each_position_amount * leverage) / mark_price)
-    purchase_qty = round(purchase_qty, int(exchange_info["quantityPrecision"]))
+    purchase_qty = get_rounded_qunatity(symbol, purchase_qty, um_futures_client)
 
     response = um_futures_client.change_leverage(symbol=symbol, leverage=10)
 
