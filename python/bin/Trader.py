@@ -551,13 +551,11 @@ def main():
     # Set the config parameters using the config file
 
     current_time = datetime.now()
-    current_date = current_time.strftime('%Y-%m-%d')
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
     workspace_dir = '~/binance-trader'
-
     config_file = workspace_dir + '/config/env_config.yaml'
-    connections_file = workspace_dir + '/config/connections.yaml'
+    connections_file = '~/.secure/connections.yaml'
     configs = read_env(config_file)
 
     log_base_directory = configs["LOG_BASE_DIRECTORY"]
