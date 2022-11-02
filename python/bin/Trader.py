@@ -578,9 +578,9 @@ def send_sms(text_message, config):
 
     message = client.messages \
         .create(
-        body="Join Earth's mightiest heroes. Like Kevin Bacon.",
-        from_='+15017122661',
-        to='+15558675310'
+        body=text_message,
+        from_='+18316041992',
+        to='+917709452797'
     )
 
 def main():
