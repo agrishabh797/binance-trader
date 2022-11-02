@@ -265,7 +265,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         logging.info("FEE    : %s", str(total_fee))
         logging.info("NET_PNL: %s", str(net_pnl))
 
-        text_position = text_position + str(symbol) + " closed with NET PNL " + str(net_pnl) + "\n"
+        text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
     else:
         logging.info("Position is not closed.")
@@ -288,7 +288,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 logging.info("Symbol     : %s", str(symbol))
                 logging.info("Margin     : %s", str(current_margin))
                 logging.info("Quantity   : %s", str(position_quantity))
-                text_position = text_position + str(symbol) + " updated with limit margin " + str(current_margin) + "\n"
+                text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 2)) + "\n"
         else:
             if float(current_margin / starting_margin) < 4.9:
 
@@ -300,7 +300,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                         str(current_pnl_percentage))
                     current_margin = current_margin + float(starting_margin / 2)
                     manual_added_margin = float(manual_added_margin) + float(starting_margin / 2)
-                    text_position = text_position + str(symbol) + " updated with manual margin " + str(current_margin) + "\n"
+                    text_position = text_position + str(symbol) + " updated with manual margin " + str(round(current_margin, 2)) + "\n"
             else:
                 logging.info("Ratio of current margin and starting margin is greater than 5, doing nothing... just waiting")
 
@@ -512,7 +512,7 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     logging.info("Quantity   : %s", str(position_quantity))
 
     global text_position
-    text_position = text_position + str(symbol) + " created with margin " + str(starting_margin) + "\n"
+    text_position = text_position + str(symbol) + " created with margin " + str(round(starting_margin, 2)) + "\n"
 
 
 
