@@ -8,7 +8,10 @@ from datetime import datetime
 import os
 from binance.um_futures import UMFutures
 import random
+from twilio.rest import Client
 
+
+text_position = ''
 
 def create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client):
 
@@ -33,7 +36,7 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     margin_to_add = float(starting_margin / 2)
 
     purchase_qty = float((margin_to_add * leverage) / loss_mark_price)
-    purchase_qty = get_rounded_qunatity(symbol, purchase_qty, um_futures_client)
+    purchase_qty = get_rounded_quantity(symbol, purchase_qty, um_futures_client)
 
     response_mp = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response_mp['markPrice'])
@@ -216,6 +219,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         limit_order_id = order_data[0]
         limit_src_order_id = order_data[1]
 
+    global text_position
     if current_margin == 0.0:
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
         logging.info("Current Margin is 0.0. Position is closed.")
@@ -259,6 +263,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         logging.info("FEE    : %s", str(total_fee))
         logging.info("NET_PNL: %s", str(net_pnl))
 
+        text_position = text_position + str(symbol) + " closed with NET PNL " + str(net_pnl) + "\n"
+
     else:
         logging.info("Position is not closed.")
         if limit_src_order_id is not None:
@@ -280,10 +286,11 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 logging.info("Symbol     : %s", str(symbol))
                 logging.info("Margin     : %s", str(current_margin))
                 logging.info("Quantity   : %s", str(position_quantity))
+                text_position = text_position + str(symbol) + " updated with limit margin " + str(current_margin) + "\n"
         else:
             if float(current_margin / starting_margin) < 4.9:
 
-                current_pnl_percentage = float(response_risk['unRealizedProfit'] / current_margin) * 100
+                current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
                 if current_pnl_percentage < -60.0:
                     um_futures_client.modify_isolated_position_margin(symbol=symbol, amount=float(starting_margin / 2), type=1)
                     logging.info(
@@ -291,6 +298,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                         str(current_pnl_percentage))
                     current_margin = current_margin + float(starting_margin / 2)
                     manual_added_margin = float(manual_added_margin) + float(starting_margin / 2)
+                    text_position = text_position + str(symbol) + " updated with manual margin " + str(current_margin) + "\n"
             else:
                 logging.info("Ratio of current margin and starting margin is greater than 5, doing nothing... just waiting")
 
@@ -419,7 +427,7 @@ def get_lot_size(symbol, um_futures_client):
                 if symbol_filter['filterType'] == 'LOT_SIZE':
                     return float(symbol_filter['stepSize'])
 
-def get_rounded_qunatity(symbol, price, um_futures_client):
+def get_rounded_quantity(symbol, price, um_futures_client):
     return round_step_size(price, get_lot_size(symbol, um_futures_client))
 
 def create_position(symbol, side, each_position_amount, conn, um_futures_client):
@@ -432,7 +440,7 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     response = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response['markPrice'])
     purchase_qty = float((each_position_amount * leverage) / mark_price)
-    purchase_qty = get_rounded_qunatity(symbol, purchase_qty, um_futures_client)
+    purchase_qty = get_rounded_quantity(symbol, purchase_qty, um_futures_client)
 
     response = um_futures_client.change_leverage(symbol=symbol, leverage=10)
 
@@ -484,6 +492,10 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     logging.info("Leverage   : %s", str(leverage))
     logging.info("Margin     : %s", str(starting_margin))
     logging.info("Quantity   : %s", str(position_quantity))
+
+    global text_position
+    text_position = text_position + str(symbol) + " created with margin " + str(starting_margin) + "\n"
+
 
 
 def check_and_update_symbols(conn, um_futures_client):
@@ -559,6 +571,18 @@ def create_new_positions(total_positions, conn, um_futures_client):
             create_position(symbol, 'SELL', each_position_amount, conn, um_futures_client)
 
 
+def send_sms(text_message, config):
+    account_sid = config['TWILIO_ACCOUNT_SID']
+    auth_token = config['TWILIO_AUTH_TOKEN']
+    client = Client(account_sid, auth_token)
+
+    message = client.messages \
+        .create(
+        body="Join Earth's mightiest heroes. Like Kevin Bacon.",
+        from_='+15017122661',
+        to='+15558675310'
+    )
+
 def main():
     # Set the config parameters using the config file
 
@@ -623,6 +647,12 @@ def main():
 
     conn.commit()
     conn.close()
+
+    global text_position
+
+    if text_position:
+        twilio_keys = get_db_details(connections_file, 'TWILIO_KEY')
+        send_sms(text_position, twilio_keys)
 
 
 if __name__ == "__main__":
