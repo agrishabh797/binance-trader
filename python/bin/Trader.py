@@ -17,7 +17,6 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
 
     # Create New Order for 25% loss for 50% addition of original margin
 
-    exchange_info = get_exchange_info(symbol, um_futures_client)
     response = um_futures_client.get_position_risk(symbol=symbol)
     entry_price = float(response[0]['entryPrice'])
     leverage = int(response[0]['leverage'])
@@ -53,7 +52,8 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
         timeInForce="GTC",
         price=loss_mark_price
     )
-
+    logging.info("Limit order response from server.")
+    logging.info(response)
     new_order_id = response['orderId']
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
@@ -90,8 +90,10 @@ def create_profit_order(symbol, position_id, margin, side, conn, um_futures_clie
         workingType='MARK_PRICE'
     )
 
-    new_order_id = response['orderId']
+    logging.info("Profit order response from server.")
+    logging.info(response)
 
+    new_order_id = response['orderId']
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
@@ -343,7 +345,7 @@ def get_wallet_utilization(conn, um_futures_client):
 
 
 def get_new_positions_symbols(total_new_positions, conn):
-    sql = "select symbol_name from symbols where symbol_name not in (select symbol from positions where position_status = 'OPEN')"
+    sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status = 'OPEN')"
     cursor = conn.cursor()
     cursor.execute(sql)
     new_positions = cursor.fetchall()
@@ -359,7 +361,23 @@ def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
         quantity, total_price, fee, status, order_created_time, order_executed_time, created_ts, updated_ts) VALUES 
         (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
 
-    response = um_futures_client.query_order(symbol=symbol, orderId=order_id)
+    n_retry = 3
+    while n_retry > 0:
+        try:
+            response = um_futures_client.query_order(symbol=symbol, orderId=order_id)
+            break
+        except ClientError as error:
+            logging.info(
+                "Found error. status: {}, error code: {}, error message: {}".format(
+                    error.status_code, error.error_code, error.error_message
+                )
+            )
+            logging.info("Retrying..")
+            n_retry = n_retry - 1
+
+    if n_retry == 0:
+        logging.info("Retries failed. Exiting")
+        exit(1)
 
     side = response['side']
     type = response['type']
