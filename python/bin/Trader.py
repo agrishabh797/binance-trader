@@ -232,14 +232,18 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         if response['status'] == 'FILLED':
             logging.info("Profit order id %s is filled. Position Closed on its own.")
             logging.info("Cancelling the limit order.")
-            close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'FILLED', conn, um_futures_client)
-            close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
+            if profit_order_id:
+                close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'FILLED', conn, um_futures_client)
+            if limit_order_id:
+                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
             closing_order_id = profit_src_order_id
         else:
             logging.info("Profit order id %s is not filled. Position Closed manually.")
             logging.info("Cancelling the limit order and profit order.")
-            close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
-            close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
+            if profit_order_id:
+                close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
+            if limit_order_id:
+                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
 
             response = um_futures_client.get_all_orders(symbol=symbol)
             closing_order_id = response[-1]['orderId']
