@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from math import floor, ceil
 from binance.lib.utils import config_logging
 import psycopg2
 from utils.read_env import read_env
@@ -9,6 +10,7 @@ import os
 from binance.um_futures import UMFutures
 import random
 from twilio.rest import Client
+from binance.error import ClientError
 
 
 text_position = ''
@@ -29,7 +31,7 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
         loss_position_amount = total_position_amount - loss
     elif side == 'SELL':
         loss_position_amount = total_position_amount + loss
-    print(total_position_amount, loss, loss_position_amount)
+
     loss_mark_price = float(loss_position_amount / position_quantity)
     loss_mark_price = get_rounded_price(symbol, loss_mark_price, um_futures_client)
     margin_to_add = float(starting_margin / 2)
@@ -41,9 +43,9 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     mark_price = float(response_mp['markPrice'])
 
     if (side == 'BUY' and mark_price < loss_mark_price) or (side == 'SELL' and mark_price > loss_mark_price):
-        loss_mark_price = mark_price
+        loss_mark_price = get_rounded_price(symbol, mark_price, um_futures_client)
 
-    print(symbol, side, purchase_qty, loss_mark_price)
+    logging.info("Symbol: %s, side: %s, Purchase Qty: %s, Loss Mark Price: %s", symbol, side, purchase_qty, loss_mark_price)
     response = um_futures_client.new_order(
         symbol=symbol,
         side=side,
@@ -80,7 +82,7 @@ def create_profit_order(symbol, position_id, margin, side, conn, um_futures_clie
 
     profit_closing_price = float(profit_position_amount / position_quantity)
     profit_closing_price = get_rounded_price(symbol, profit_closing_price, um_futures_client)
-    print(symbol, close_side, profit_closing_price)
+    logging.info("Symbol: %s, side: %s, Profit Closing Price: %s", symbol, close_side, profit_closing_price)
     response = um_futures_client.new_order(
         symbol=symbol,
         side=close_side,
@@ -130,35 +132,42 @@ def get_existing_positions(conn):
 def close_and_update_order(symbol, order_id, src_order_id, status, conn, um_futures_client):
     current_time = datetime.utcnow()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
-    response = um_futures_client.query_order(symbol=symbol, orderId=src_order_id)
-    if status == 'FILLED':
+    try:
+        response = um_futures_client.query_order(symbol=symbol, orderId=src_order_id)
+        if status == 'FILLED':
 
-        fee = get_order_fee(symbol, src_order_id, um_futures_client)
-        avg_price = float(response['avgPrice'])
-        quantity = float(response['executedQty'])
-        total_price = avg_price * quantity
-        order_executed_time = datetime.fromtimestamp(int(response['updateTime']) / 1000).strftime(
-            '%Y-%m-%d %H:%M:%S')
-        update_ts = current_timestamp
+            fee = get_order_fee(symbol, src_order_id, um_futures_client)
+            avg_price = float(response['avgPrice'])
+            quantity = float(response['executedQty'])
+            total_price = avg_price * quantity
+            order_executed_time = datetime.fromtimestamp(int(response['updateTime']) / 1000).strftime(
+                '%Y-%m-%d %H:%M:%S')
+            update_ts = current_timestamp
 
-        query = """update orders set avg_price = {}, total_price = {}, fee = {}, 
-                status = '{}', order_executed_time = '{}', updated_ts = '{}' where id = {}""". \
-            format(avg_price, total_price, fee, 'FILLED', order_executed_time, update_ts, order_id)
+            query = """update orders set avg_price = {}, total_price = {}, fee = {}, 
+                    status = '{}', order_executed_time = '{}', updated_ts = '{}' where id = {}""". \
+                format(avg_price, total_price, fee, 'FILLED', order_executed_time, update_ts, order_id)
 
-    elif status == 'CANCEL':
-        if response['status'] == 'NEW':
-            um_futures_client.cancel_order(symbol=symbol, orderId=src_order_id)
-            update_status = 'CANCELLED_BY_SYSTEM'
-        else:
-            update_status = 'CANCELLED_BY_USER'
+        elif status == 'CANCEL':
+            if response['status'] == 'NEW':
+                um_futures_client.cancel_order(symbol=symbol, orderId=src_order_id)
+                update_status = 'CANCELLED_BY_SYSTEM'
+            else:
+                update_status = 'CANCELLED_BY_USER'
 
-        query = """update orders set status = '{}', updated_ts = '{}' where id = {}""". \
-            format(update_status, current_timestamp, order_id)
+            query = """update orders set status = '{}', updated_ts = '{}' where id = {}""". \
+                format(update_status, current_timestamp, order_id)
 
-    cursor = conn.cursor()
-    cursor.execute(query)
-    cursor.close()
-    conn.commit()
+        cursor = conn.cursor()
+        cursor.execute(query)
+        cursor.close()
+        conn.commit()
+    except ClientError as error:
+        logging.info(
+            "Found error. status: {}, error code: {}, error message: {}".format(
+                error.status_code, error.error_code, error.error_message
+            )
+        )
 
 
 def get_total_fee(position_id, conn):
@@ -182,7 +191,6 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     cursor.execute(sql)
     pos_data = cursor.fetchone()
     cursor.close()
-    # print(pos_data)
     symbol = pos_data[1]
     side = pos_data[2]
     starting_margin = pos_data[4]
@@ -193,7 +201,16 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     logging.info("Symbol     : %s", symbol)
 
     logging.info("Getting Position risk from API.")
-    response_risk = um_futures_client.get_position_risk(symbol=symbol)
+    try:
+        response_risk = um_futures_client.get_position_risk(symbol=symbol)
+    except ClientError as error:
+        logging.info(
+            "Found error. status: {}, error code: {}, error message: {}".format(
+                error.status_code, error.error_code, error.error_message
+            )
+        )
+        logging.info("Unable to fetch position risk, Will retry later..")
+        return
     current_margin = float(response_risk[0]['isolatedWallet'])
     entry_price = float(response_risk[0]['entryPrice'])
     position_quantity = abs(float(response_risk[0]['positionAmt']))
@@ -294,8 +311,14 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 logging.info("Quantity   : %s", str(position_quantity))
                 text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 2)) + "\n"
         else:
+            if float(current_margin / starting_margin) < 2.9:
+                logging.info(
+                    "Ratio of current margin and starting margin is not 3, hence creating another limit order.")
+                create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client)
+            else:
+                logging.info(
+                    "Ratio of current margin and starting margin is 3, hence not creating another limit order. We will add manual margin once the loss percentage goes beyond 60")
             if float(current_margin / starting_margin) < 4.9:
-
                 current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
                 if current_pnl_percentage < -60.0:
                     um_futures_client.modify_isolated_position_margin(symbol=symbol, amount=float(starting_margin / 2), type=1)
@@ -380,8 +403,8 @@ def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
             n_retry = n_retry - 1
 
     if n_retry == 0:
-        logging.info("Retries failed. Exiting")
-        exit(1)
+        logging.info("Retries failed. Continuing with next position")
+        return
 
     side = response['side']
     type = response['type']
@@ -468,7 +491,6 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
 
     if get_margin_type(symbol, um_futures_client) == 'CROSS':
         response = um_futures_client.change_margin_type(symbol=symbol, marginType="ISOLATED")
-    print(symbol, side, each_position_amount, mark_price, purchase_qty)
     response = um_futures_client.new_order(
         symbol=symbol,
         side=side,
@@ -519,7 +541,6 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     text_position = text_position + str(symbol) + " created with margin " + str(round(starting_margin, 2)) + "\n"
 
 
-
 def check_and_update_symbols(conn, um_futures_client):
 
     current_time = datetime.now()
@@ -561,7 +582,14 @@ def check_and_update_symbols(conn, um_futures_client):
         conn.commit()
 
 
-def create_new_positions(total_positions, conn, um_futures_client):
+def create_new_positions(max_positions, conn, um_futures_client):
+    # We will dynamically calculate the number of positions we need to create
+    # formula - (ceil(total_wallet_amount / 200)) * 2
+
+    total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+    total_positions = (ceil(total_wallet_amount / 200)) * 2
+    total_positions = min(max_positions, total_positions)
+
     sql_buy = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'BUY'"
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
 
@@ -661,11 +689,11 @@ def main():
 
     wallet_utilization = get_wallet_utilization(conn, um_futures_client)
 
-    print('wallet_utilization', wallet_utilization)
+    max_positions = 20
     if wallet_utilization < 30:
         logging.info("Wallet Utilization: %s", str(wallet_utilization))
         logging.info("Checking if new positions need to be created")
-        create_new_positions(total_positions, conn, um_futures_client)
+        create_new_positions(max_positions, conn, um_futures_client)
 
     conn.commit()
     conn.close()
