@@ -571,7 +571,7 @@ def check_and_update_symbols(conn, um_futures_client):
 
     inactive_symbols = list(set(existing_symbols_list) - set(incoming_symbol_list))
     if inactive_symbols:
-        sql = """update symbols set is_active = 'N', updated_ts = '{}' where symbol_name in {}""".format(current_timestamp, tuple(incoming_symbol_list))
+        sql = """update symbols set is_active = 'N', updated_ts = '{}' where symbol_name in {}""".format(current_timestamp, tuple(inactive_symbols))
         cursor.execute(sql)
         conn.commit()
 
