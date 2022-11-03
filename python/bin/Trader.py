@@ -549,7 +549,7 @@ def check_and_update_symbols(conn, um_futures_client):
     exchange_info = um_futures_client.exchange_info()
     incoming_symbol_list = []
     for position in exchange_info['symbols']:
-        if position['symbol'].endswith('USDT') and position['status'] == 'TRADING':
+        if position['symbol'].endswith('USDT') and position['status'] == 'TRADING' and position['symbol'] not in ('CVXUSDT', 'WOOUSDT', 'CELOUSDT', 'GALUSDT'):
             incoming_symbol_list.append(position['symbol'])
 
     sql = "select symbol_name from symbols"
@@ -679,6 +679,7 @@ def main():
     logging.info("Created Binance Connection")
 
     check_and_update_symbols(conn, um_futures_client)
+
     logging.info("Checking Existing Positions from Database")
     position_ids = get_existing_positions(conn)
 
