@@ -18,7 +18,7 @@ text_position = ''
 def create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client):
 
     # Create New Order for 25% loss for 50% addition of original margin
-
+    exchange_info = get_exchange_info(symbol, um_futures_client)
     response = um_futures_client.get_position_risk(symbol=symbol)
     entry_price = float(response[0]['entryPrice'])
     leverage = int(response[0]['leverage'])
@@ -33,17 +33,17 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
         loss_position_amount = total_position_amount + loss
 
     loss_mark_price = float(loss_position_amount / position_quantity)
-    loss_mark_price = get_rounded_price(symbol, loss_mark_price, um_futures_client)
+    loss_mark_price = round_step_size(loss_mark_price, exchange_info['tickSize'])
     margin_to_add = float(starting_margin / 2)
 
     purchase_qty = float((margin_to_add * leverage) / loss_mark_price)
-    purchase_qty = get_rounded_quantity(symbol, purchase_qty, um_futures_client)
+    purchase_qty = round_step_size(purchase_qty, exchange_info['stepSize'])
 
     response_mp = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response_mp['markPrice'])
 
     if (side == 'BUY' and mark_price < loss_mark_price) or (side == 'SELL' and mark_price > loss_mark_price):
-        loss_mark_price = get_rounded_price(symbol, mark_price, um_futures_client)
+        loss_mark_price = round_step_size(loss_mark_price, exchange_info['tickSize'])
 
     logging.info("Symbol: %s, side: %s, Purchase Qty: %s, Loss Mark Price: %s", symbol, side, purchase_qty, loss_mark_price)
     response = um_futures_client.new_order(
@@ -63,7 +63,7 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
 def create_profit_order(symbol, position_id, margin, side, conn, um_futures_client):
 
     # Create Take Profit Order
-
+    exchange_info = get_exchange_info(symbol, um_futures_client)
     response = um_futures_client.get_position_risk(symbol=symbol)
     entry_price = float(response[0]['entryPrice'])
     position_quantity = abs(float(response[0]['positionAmt']))
@@ -81,7 +81,7 @@ def create_profit_order(symbol, position_id, margin, side, conn, um_futures_clie
         close_side = 'BUY'
 
     profit_closing_price = float(profit_position_amount / position_quantity)
-    profit_closing_price = get_rounded_price(symbol, profit_closing_price, um_futures_client)
+    profit_closing_price = round_step_size(profit_closing_price, exchange_info['tickSize'])
     logging.info("Symbol: %s, side: %s, Profit Closing Price: %s", symbol, close_side, profit_closing_price)
     response = um_futures_client.new_order(
         symbol=symbol,
@@ -439,10 +439,15 @@ def get_margin_type(symbol, um_futures_client):
 
 def get_exchange_info(symbol, um_futures_client):
     response = um_futures_client.exchange_info()
+    info = {}
     for item in response["symbols"]:
         if item["symbol"] == symbol:
-            return item
-
+            for symbol_filter in item['filters']:
+                if symbol_filter['filterType'] == 'PRICE_FILTER':
+                    info['tickSize'] = float(symbol_filter['tickSize'])
+                if symbol_filter['filterType'] == 'LOT_SIZE':
+                    info['stepSize'] = float(symbol_filter['stepSize'])
+    return info
 
 def round_step_size(quantity, step_size):
     quantity = Decimal(str(quantity))
@@ -485,7 +490,7 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     response = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response['markPrice'])
     purchase_qty = float((each_position_amount * leverage) / mark_price)
-    purchase_qty = get_rounded_quantity(symbol, purchase_qty, um_futures_client)
+    purchase_qty = round_step_size(purchase_qty, exchange_info['stepSize'])
 
     response = um_futures_client.change_leverage(symbol=symbol, leverage=10)
 
