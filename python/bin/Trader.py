@@ -149,7 +149,7 @@ def close_and_update_order(symbol, order_id, src_order_id, status, conn, um_futu
                 format(avg_price, total_price, fee, 'FILLED', order_executed_time, update_ts, order_id)
 
         elif status == 'CANCEL':
-            if response['status'] == 'NEW':
+            if response['status'] in ('NEW', 'PARTIALLY_FILLED'):
                 um_futures_client.cancel_order(symbol=symbol, orderId=src_order_id)
                 update_status = 'CANCELLED_BY_SYSTEM'
             else:
