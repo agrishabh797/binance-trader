@@ -608,7 +608,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
 
     # update
-    total_positions = 10
+    total_positions = 12
     cursor = conn.cursor()
 
     cursor.execute(sql_buy)
