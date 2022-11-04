@@ -1,4 +1,5 @@
 import logging
+import time
 from decimal import Decimal
 from math import floor, ceil
 from binance.lib.utils import config_logging
@@ -242,12 +243,14 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     if current_margin == 0.0:
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
         logging.info("Current Margin is 0.0. Position is closed.")
-        logging.info("Getting Order information from API for Profit Order Id %s", profit_src_order_id)
-        response = um_futures_client.query_order(symbol=symbol, orderId=profit_src_order_id)
+        response = {'status': 'CANCELLED'}
+        if profit_src_order_id:
+            logging.info("Getting Order information from API for Profit Order Id %s", profit_src_order_id)
+            response = um_futures_client.query_order(symbol=symbol, orderId=profit_src_order_id)
 
         # if filled
         if response['status'] == 'FILLED':
-            logging.info("Profit order id %s is filled. Position Closed on its own.")
+            logging.info("Profit order id %s is filled. Position Closed on its own.", profit_src_order_id)
             logging.info("Cancelling the limit order.")
             if profit_order_id:
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'FILLED', conn, um_futures_client)
@@ -255,7 +258,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
             closing_order_id = profit_src_order_id
         else:
-            logging.info("Profit order id %s is not filled. Position Closed manually.")
+            logging.info("Profit order id %s is not filled. Position Closed manually.", profit_src_order_id)
             logging.info("Cancelling the limit order and profit order.")
             if profit_order_id:
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
@@ -383,7 +386,7 @@ def get_new_positions_symbols(total_new_positions, conn):
 def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
     current_time = datetime.utcnow()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
-
+    logging.info("Inserting record for orderId %s", order_id)
     postgres_insert_query = """INSERT INTO orders (position_id, src_order_id, side, type, stop_price, avg_price, 
         quantity, total_price, fee, status, order_created_time, order_executed_time, created_ts, updated_ts) VALUES 
         (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
@@ -400,6 +403,7 @@ def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
                 )
             )
             logging.info("Retrying..")
+            time.sleep(1)
             n_retry = n_retry - 1
 
     if n_retry == 0:
@@ -554,7 +558,7 @@ def check_and_update_symbols(conn, um_futures_client):
     exchange_info = um_futures_client.exchange_info()
     incoming_symbol_list = []
     for position in exchange_info['symbols']:
-        if position['symbol'].endswith('USDT') and position['status'] == 'TRADING' and position['symbol'] not in ('CVXUSDT', 'WOOUSDT', 'CELOUSDT', 'GALUSDT'):
+        if position['symbol'].endswith('USDT') and position['status'] == 'TRADING' and position['symbol'] not in ('INJUSDT', 'WOOUSDT', 'UNIUSDT', 'GALUSDT'):
             incoming_symbol_list.append(position['symbol'])
 
     sql = "select symbol_name from symbols"
