@@ -19,6 +19,7 @@ text_position = ''
 def create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client):
 
     # Create New Order for 25% loss for 50% addition of original margin
+    # Update - Create New Order for 50% loss for 100% addition of original margin
     exchange_info = get_exchange_info(symbol, um_futures_client)
     response = um_futures_client.get_position_risk(symbol=symbol)
     entry_price = float(response[0]['entryPrice'])
@@ -26,7 +27,8 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    loss = float(current_margin / 4)
+    # loss = float(current_margin / 4)
+    loss = float(current_margin / 2)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -35,7 +37,8 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
 
     loss_mark_price = float(loss_position_amount / position_quantity)
     loss_mark_price = round_step_size(loss_mark_price, exchange_info['tickSize'])
-    margin_to_add = float(starting_margin / 2)
+    # margin_to_add = float(starting_margin / 2)
+    margin_to_add = float(starting_margin)
 
     purchase_qty = float((margin_to_add * leverage) / loss_mark_price)
     purchase_qty = round_step_size(purchase_qty, exchange_info['stepSize'])
@@ -61,7 +64,7 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
-def create_profit_order(symbol, position_id, margin, side, conn, um_futures_client):
+def create_profit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client):
 
     # Create Take Profit Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
@@ -71,8 +74,10 @@ def create_profit_order(symbol, position_id, margin, side, conn, um_futures_clie
     total_position_amount = entry_price * position_quantity
 
     # 10% of margin is our profit
-
-    profit = float(margin / 10)
+    # Update - ratio of current margin and starting margin into 10 is our profit
+    ratio = float(current_margin/starting_margin)
+    # profit = float(starting_margin / 10)
+    profit = float((ratio * starting_margin) / 10)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -300,7 +305,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'FILLED', conn, um_futures_client)
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
                 logging.info("Closing the previous profit order and creating new for updated quantity")
-                create_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client)
+                create_profit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client)
                 if float(current_margin / starting_margin) < 2.9:
                     logging.info("Ratio of current margin and starting margin is not 3, hence creating another limit order.")
                     create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client)
@@ -534,7 +539,7 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
     # Create Take Profit Order
-    create_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client)
+    create_profit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client)
 
     # Create limit order
     create_limit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client)
@@ -558,7 +563,7 @@ def check_and_update_symbols(conn, um_futures_client):
     exchange_info = um_futures_client.exchange_info()
     incoming_symbol_list = []
     for position in exchange_info['symbols']:
-        if position['symbol'].endswith('USDT') and position['status'] == 'TRADING' and position['symbol'] not in ('INJUSDT', 'WOOUSDT', 'UNIUSDT', 'GALUSDT'):
+        if position['symbol'].endswith('USDT') and position['status'] == 'TRADING':
             incoming_symbol_list.append(position['symbol'])
 
     sql = "select symbol_name from symbols"
@@ -602,6 +607,8 @@ def create_new_positions(max_positions, conn, um_futures_client):
     sql_buy = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'BUY'"
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
 
+    # update
+    total_positions = 10
     cursor = conn.cursor()
 
     cursor.execute(sql_buy)
