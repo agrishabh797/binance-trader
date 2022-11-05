@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 from decimal import Decimal
 from math import floor, ceil
@@ -64,7 +65,7 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
-def create_profit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client):
+def create_profit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client, strategy='NORMAL'):
 
     # Create Take Profit Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
@@ -75,9 +76,14 @@ def create_profit_order(symbol, position_id, starting_margin, current_margin, si
 
     # 10% of margin is our profit
     # Update - ratio of current margin and starting margin into 10 is our profit
-    ratio = float(current_margin/starting_margin)
+    # Update - 15% of margin is our profit for Normal Strategy, 50% of margin is our profit for Express Strategy
+    # ratio = float(current_margin/starting_margin)
     # profit = float(starting_margin / 10)
-    profit = float((ratio * starting_margin) / 10)
+    # profit = float((ratio * starting_margin) / 10)
+    if strategy == 'NORMAL':
+        profit = float((15 * current_margin) / 100)
+    elif strategy == 'EXPRESS':
+        profit = float((50 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -199,6 +205,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     cursor.close()
     symbol = pos_data[1]
     side = pos_data[2]
+    leverage = pos_data[3]
     starting_margin = pos_data[4]
     manual_added_margin = pos_data[9]
 
@@ -298,56 +305,57 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
 
     else:
         logging.info("Position is not closed.")
-        if limit_src_order_id is not None:
-            response = um_futures_client.query_order(symbol=symbol, orderId=limit_src_order_id)
-            if response['status'] == 'FILLED':
-                logging.info("Limit order id %s is filled", limit_src_order_id)
-                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'FILLED', conn, um_futures_client)
-                close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
-                logging.info("Closing the previous profit order and creating new for updated quantity")
-                create_profit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client)
+        if  leverage == 10:
+            if limit_src_order_id is not None:
+                response = um_futures_client.query_order(symbol=symbol, orderId=limit_src_order_id)
+                if response['status'] == 'FILLED':
+                    logging.info("Limit order id %s is filled", limit_src_order_id)
+                    close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'FILLED', conn, um_futures_client)
+                    close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
+                    logging.info("Closing the previous profit order and creating new for updated quantity")
+                    create_profit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client)
+                    if float(current_margin / starting_margin) < 2.9:
+                        logging.info("Ratio of current margin and starting margin is not 3, hence creating another limit order.")
+                        create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client)
+                    else:
+                        logging.info(
+                            "Ratio of current margin and starting margin is 3, hence not creating another limit order. We will add manual margin once the loss percentage goes beyond 60")
+                    logging.info("Position updated with following")
+                    logging.info("Position Id: %s", str(position_id))
+                    logging.info("Symbol     : %s", str(symbol))
+                    logging.info("Margin     : %s", str(current_margin))
+                    logging.info("Quantity   : %s", str(position_quantity))
+                    text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 2)) + "\n"
+            else:
                 if float(current_margin / starting_margin) < 2.9:
-                    logging.info("Ratio of current margin and starting margin is not 3, hence creating another limit order.")
+                    logging.info(
+                        "Ratio of current margin and starting margin is not 3, hence creating another limit order.")
                     create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client)
                 else:
                     logging.info(
                         "Ratio of current margin and starting margin is 3, hence not creating another limit order. We will add manual margin once the loss percentage goes beyond 60")
-                logging.info("Position updated with following")
-                logging.info("Position Id: %s", str(position_id))
-                logging.info("Symbol     : %s", str(symbol))
-                logging.info("Margin     : %s", str(current_margin))
-                logging.info("Quantity   : %s", str(position_quantity))
-                text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 2)) + "\n"
-        else:
-            if float(current_margin / starting_margin) < 2.9:
-                logging.info(
-                    "Ratio of current margin and starting margin is not 3, hence creating another limit order.")
-                create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client)
-            else:
-                logging.info(
-                    "Ratio of current margin and starting margin is 3, hence not creating another limit order. We will add manual margin once the loss percentage goes beyond 60")
-            if float(current_margin / starting_margin) < 4.9:
-                current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
-                if current_pnl_percentage < -60.0:
-                    um_futures_client.modify_isolated_position_margin(symbol=symbol, amount=float(starting_margin / 2), type=1)
-                    logging.info(
-                        "Ratio of current margin and starting margin is less than 5 and current_pnl_percentage is %s, hence adding manual margin",
-                        str(current_pnl_percentage))
-                    current_margin = current_margin + float(starting_margin / 2)
-                    manual_added_margin = float(manual_added_margin) + float(starting_margin / 2)
-                    text_position = text_position + str(symbol) + " updated with manual margin " + str(round(current_margin, 2)) + "\n"
-            else:
-                logging.info("Ratio of current margin and starting margin is greater than 5, doing nothing... just waiting")
+                if float(current_margin / starting_margin) < 4.9:
+                    current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
+                    if current_pnl_percentage < -60.0:
+                        um_futures_client.modify_isolated_position_margin(symbol=symbol, amount=float(starting_margin / 2), type=1)
+                        logging.info(
+                            "Ratio of current margin and starting margin is less than 5 and current_pnl_percentage is %s, hence adding manual margin",
+                            str(current_pnl_percentage))
+                        current_margin = current_margin + float(starting_margin / 2)
+                        manual_added_margin = float(manual_added_margin) + float(starting_margin / 2)
+                        text_position = text_position + str(symbol) + " updated with manual margin " + str(round(current_margin, 2)) + "\n"
+                else:
+                    logging.info("Ratio of current margin and starting margin is greater than 5, doing nothing... just waiting")
 
-        query = """update positions set current_margin = {}, entry_price = {}, position_quantity = {}, manual_added_margin = {},
-                                        liquidation_price = {}, updated_ts = '{}' where id = {}""". \
-            format(current_margin, entry_price, position_quantity, manual_added_margin, liquidation_price, current_timestamp,
-                   position_id)
+            query = """update positions set current_margin = {}, entry_price = {}, position_quantity = {}, manual_added_margin = {},
+                                            liquidation_price = {}, updated_ts = '{}' where id = {}""". \
+                format(current_margin, entry_price, position_quantity, manual_added_margin, liquidation_price, current_timestamp,
+                       position_id)
 
-        cursor = conn.cursor()
-        cursor.execute(query)
-        cursor.close()
-        conn.commit()
+            cursor = conn.cursor()
+            cursor.execute(query)
+            cursor.close()
+            conn.commit()
 
 
 def get_utilized_wallet_amount(conn):
@@ -489,22 +497,26 @@ def get_lot_size(symbol, um_futures_client):
 def get_rounded_quantity(symbol, price, um_futures_client):
     return round_step_size(price, get_lot_size(symbol, um_futures_client))
 
-def create_position(symbol, side, each_position_amount, conn, um_futures_client):
+def create_position(symbol, side, each_position_amount, conn, um_futures_client, strategy):
 
-    leverage = 10
+    if strategy == 'NORMAL':
+        leverage = 10
+    elif strategy == 'EXPRESS':
+        leverage = 20
+
     exchange_info = get_exchange_info(symbol, um_futures_client)
     current_time = datetime.utcnow()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
+
+    response = um_futures_client.change_leverage(symbol=symbol, leverage=leverage)
+    if get_margin_type(symbol, um_futures_client) == 'CROSS':
+        response = um_futures_client.change_margin_type(symbol=symbol, marginType="ISOLATED")
 
     response = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response['markPrice'])
     purchase_qty = float((each_position_amount * leverage) / mark_price)
     purchase_qty = round_step_size(purchase_qty, exchange_info['stepSize'])
 
-    response = um_futures_client.change_leverage(symbol=symbol, leverage=10)
-
-    if get_margin_type(symbol, um_futures_client) == 'CROSS':
-        response = um_futures_client.change_margin_type(symbol=symbol, marginType="ISOLATED")
     response = um_futures_client.new_order(
         symbol=symbol,
         side=side,
@@ -539,10 +551,11 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
     # Create Take Profit Order
-    create_profit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client)
+    create_profit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client, strategy)
 
     # Create limit order
-    create_limit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client)
+    if strategy == 'NORMAL':
+        create_limit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client)
 
     logging.info("Created following position")
     logging.info("Position Id: %s", str(position_id))
@@ -596,7 +609,7 @@ def check_and_update_symbols(conn, um_futures_client):
         conn.commit()
 
 
-def create_new_positions(max_positions, conn, um_futures_client):
+def create_new_positions(max_positions, conn, um_futures_client, strategy):
     # We will dynamically calculate the number of positions we need to create
     # formula - (ceil(total_wallet_amount / 200)) * 2
 
@@ -626,15 +639,18 @@ def create_new_positions(max_positions, conn, um_futures_client):
 
         new_positions_symbols = get_new_positions_symbols(total_new_positions, conn)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-        each_position_amount = float(total_wallet_amount / 5) / total_positions
+        if strategy == 'NORMAL':
+            each_position_amount = float(total_wallet_amount / 5) / total_positions
+        elif strategy == 'EXPRESS':
+            each_position_amount = 5.0
 
         for i in range(new_buy_pos_count):
             symbol = new_positions_symbols.pop()
-            create_position(symbol, 'BUY', each_position_amount, conn, um_futures_client)
+            create_position(symbol, 'BUY', each_position_amount, conn, um_futures_client, strategy)
 
         for i in range(new_sell_pos_count):
             symbol = new_positions_symbols.pop()
-            create_position(symbol, 'SELL', each_position_amount, conn, um_futures_client)
+            create_position(symbol, 'SELL', each_position_amount, conn, um_futures_client, strategy)
 
 
 def send_sms(text_message, config):
@@ -651,6 +667,14 @@ def send_sms(text_message, config):
 
 def main():
     # Set the config parameters using the config file
+    n = len(sys.argv)
+    if n != 2:
+        print("Argument Expected - 'NORMAL' or 'EXPRESS' for strategy")
+        exit(1)
+
+    strategy = sys.argv[1]
+    if strategy not in ['NORMAL', 'EXPRESS']:
+        print("Argument Expected - 'NORMAL' or 'EXPRESS' for strategy")
 
     current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
@@ -707,10 +731,13 @@ def main():
     wallet_utilization = get_wallet_utilization(conn, um_futures_client)
 
     max_positions = 20
-    if wallet_utilization < 30:
-        logging.info("Wallet Utilization: %s", str(wallet_utilization))
-        logging.info("Checking if new positions need to be created")
-        create_new_positions(max_positions, conn, um_futures_client)
+    if strategy == 'NORMAL':
+        if wallet_utilization < 30:
+            logging.info("Wallet Utilization: %s", str(wallet_utilization))
+            logging.info("Checking if new positions need to be created")
+            create_new_positions(max_positions, conn, um_futures_client, strategy)
+    elif strategy == 'EXPRESS':
+        create_new_positions(max_positions, conn, um_futures_client, strategy)
 
     conn.commit()
     conn.close()
