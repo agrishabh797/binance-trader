@@ -307,6 +307,10 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             closing_order_id = response['orderId']
             logging.info("Position closed with order id %s.", closing_order_id)
             insert_order_record(symbol, position_id, closing_order_id, conn, um_futures_client)
+            if profit_order_id:
+                close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
+            if limit_order_id:
+                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
 
         # Closing the position record
 
@@ -372,7 +376,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                         manual_added_margin = float(manual_added_margin) + float(starting_margin / 2.5)
                         text_position = text_position + str(symbol) + " updated with manual margin " + str(round(current_margin, 2)) + "\n"
                 else:
-                    logging.info("Ratio of current margin and starting margin is greater than %ratio, doing nothing... just waiting", str(ratio))
+                    logging.info("Ratio of current margin and starting margin is greater than %s, doing nothing... just waiting", str(ratio))
                     position_status = "ALL_IN"
 
             query = """update positions set current_margin = {}, entry_price = {}, position_quantity = {}, manual_added_margin = {},
@@ -681,7 +685,7 @@ def create_new_positions(max_positions, conn, um_futures_client, strategy):
         elif strategy == 'EXPRESS':
             each_position_amount = 5.0
 
-        for symbol, side in new_positions_symbols:
+        for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             if (wallet_utilization < 30 and strategy == 'NORMAL') or strategy == 'EXPRESS':
                 create_position(symbol, side, each_position_amount, conn, um_futures_client, strategy)
