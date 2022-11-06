@@ -261,7 +261,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     hours_diff = (current_time - created_ts).total_seconds() / 3600
 
     global text_position
-    if current_margin == 0.0 or (((5 < current_pnl_percentage) and hours_diff > 24) or ((-10 < current_pnl_percentage < 0) and hours_diff > 36)):
+    if current_margin == 0.0 or (((5 < current_pnl_percentage) and hours_diff >= 36) or ((-10 < current_pnl_percentage < 0) and hours_diff >= 48)):
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
         if current_margin == 0.0:
             logging.info("Current Margin is 0.0. Position is closed.")
@@ -357,7 +357,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                     logging.info("Symbol     : %s", str(symbol))
                     logging.info("Margin     : %s", str(current_margin))
                     logging.info("Quantity   : %s", str(position_quantity))
-                    text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 2)) + "\n"
+                    # text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 2)) + "\n"
             elif limit_src_order_id is None:
                 ratio = float(current_margin / starting_margin)
                 if ratio < 2.1:
@@ -375,7 +375,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                             str(ratio), str(current_pnl_percentage))
                         current_margin = current_margin + float(starting_margin / 2.5)
                         manual_added_margin = float(manual_added_margin) + float(starting_margin / 2.5)
-                        text_position = text_position + str(symbol) + " updated with manual margin " + str(round(current_margin, 2)) + "\n"
+                        # text_position = text_position + str(symbol) + " updated with manual margin " + str(round(current_margin, 2)) + "\n"
                 else:
                     logging.info("Ratio of current margin and starting margin is greater than %s, doing nothing... just waiting", str(ratio))
                     position_status = "ALL_IN"
@@ -609,7 +609,7 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client,
     logging.info("Quantity   : %s", str(position_quantity))
 
     global text_position
-    text_position = text_position + str(symbol) + " created with margin " + str(round(starting_margin, 2)) + "\n"
+    # text_position = text_position + str(symbol) + " created with margin " + str(round(starting_margin, 2)) + "\n"
 
 
 def check_and_update_symbols(conn, um_futures_client):
