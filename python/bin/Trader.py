@@ -708,6 +708,11 @@ def send_sms(text_message, config):
         to='+917709452797'
     )
 
+def time_is_between(time, time_range):
+    if time_range[1] < time_range[0]:
+        return time >= time_range[0] or time <= time_range[1]
+    return time_range[0] <= time <= time_range[1]
+
 def main():
     # Set the config parameters using the config file
     n = len(sys.argv)
@@ -782,7 +787,7 @@ def main():
 
     global text_position
 
-    if text_position:
+    if text_position and not time_is_between(datetime.now().time().strftime("%H:%M"), ("18:30", "02:30")):
         twilio_keys = get_db_details(connections_file, 'TWILIO_KEY')
         send_sms(text_position, twilio_keys)
 
