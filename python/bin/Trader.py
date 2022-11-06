@@ -255,7 +255,9 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         limit_order_id = order_data[0]
         limit_src_order_id = order_data[1]
 
-    current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
+    current_pnl_percentage = 0.0
+    if current_margin != 0.0:
+        current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
     hours_diff = (current_time - created_ts).total_seconds() / 3600
 
     global text_position
