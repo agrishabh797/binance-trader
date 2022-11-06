@@ -199,8 +199,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
     sql = """select id, symbol, side, leverage, starting_margin, current_margin, 
         entry_price, position_quantity, liquidation_price, manual_added_margin, position_status, closing_pnl,
-        fee_incurred, net_pnl, created_ts, updated_ts  from positions where id = {} 
-        and position_status = 'OPEN'""".format(position_id)
+        fee_incurred, net_pnl, created_ts, updated_ts  from positions where id = {}""".format(position_id)
 
     cursor = conn.cursor()
     cursor.execute(sql)
