@@ -787,7 +787,7 @@ def main():
 
     global text_position
 
-    if text_position and not time_is_between(datetime.now().time().strftime("%H:%M"), ("18:30", "02:30")):
+    if text_position and not time_is_between(datetime.utcnow().time().strftime("%H:%M"), ("18:30", "02:30")):
         twilio_keys = get_db_details(connections_file, 'TWILIO_KEY')
         send_sms(text_position, twilio_keys)
 
