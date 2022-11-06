@@ -376,7 +376,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                     position_status = "ALL_IN"
 
             query = """update positions set current_margin = {}, entry_price = {}, position_quantity = {}, manual_added_margin = {},
-                                            liquidation_price = {}, updated_ts = '{}', position_status = '{}', where id = {}""". \
+                                            liquidation_price = {}, updated_ts = '{}', position_status = '{}' where id = {}""". \
                 format(current_margin, entry_price, position_quantity, manual_added_margin, liquidation_price, current_timestamp, position_status,
                        position_id)
 
