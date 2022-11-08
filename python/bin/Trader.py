@@ -17,6 +17,9 @@ from binance.error import ClientError
 
 text_position = ''
 
+
+
+
 def create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client):
 
     # Create New Order for 25% loss for 50% addition of original margin
@@ -420,7 +423,62 @@ def get_wallet_utilization(conn, um_futures_client):
     return percent_utilization
 
 
-def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn):
+def decide_side(symbol, um_futures_client):
+    candles = um_futures_client.klines(symbol=symbol, interval="3", limit=41)
+    open_for_range = float(candles[0][1])
+    close_for_range = float(candles[-1][4])
+    high_for_range = float(candles[0][1])
+    low_for_range = float(candles[-1][4])
+    i = 0
+    index_low = 0
+    index_high = 0
+    # print(candles[0])
+    for candle in candles:
+        # print(candle)
+        if high_for_range < float(candle[2])  and i != 0:
+            high_for_range = float(candle[2])
+            index_high = i
+        if low_for_range > float(candle[3]) and i != len(candles) -1:
+            low_for_range = float(candle[3])
+            index_low = i
+        i = i + 1
+    # print(candles[-1])
+    if open_for_range > close_for_range:
+        if open_for_range == high_for_range:
+            if close_for_range == low_for_range:
+                side = 'SELL'
+            elif close_for_range > low_for_range:
+                side = 'BUY'
+        elif open_for_range < high_for_range:
+            if close_for_range == low_for_range:
+                side = 'SELL'
+            elif close_for_range > low_for_range:
+                if index_high < index_low:
+                    side = 'BUY'
+                else:
+                    side = 'SELL'
+    elif open_for_range <= close_for_range:
+        if open_for_range == low_for_range:
+            if close_for_range == high_for_range:
+                side = 'BUY'
+            elif close_for_range < high_for_range:
+                side = 'SELL'
+        elif open_for_range > low_for_range:
+            if close_for_range == high_for_range:
+                side = 'BUY'
+            elif close_for_range < high_for_range:
+                if index_high > index_low:
+                    side = 'SELL'
+                else:
+                    side = 'BUY'
+    # print(open_for_range)
+    # print(high_for_range, index_high)
+    # print(low_for_range, index_low)
+    # print(close_for_range)
+    # print(side)
+    return side
+
+def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client):
     sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status in ('OPEN', 'ALL_IN') or (DATE_PART('day', current_timestamp::timestamp - created_ts::timestamp) = 1 and position_status = 'CLOSED'))"
     cursor = conn.cursor()
     cursor.execute(sql)
@@ -432,7 +490,7 @@ def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_p
     random.shuffle(l)
     for i in range(total_new_positions):
         symbol = new_positions_selected.pop()
-        side = l.pop()
+        side = decide_side(symbol, um_futures_client)
         new_positions_ordered[symbol] = side
 
     return new_positions_ordered
