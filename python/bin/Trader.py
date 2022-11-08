@@ -837,16 +837,16 @@ def main():
     logging.info("Wallet Utilization: %s", str(wallet_utilization))
     logging.info("Checking if new positions need to be created")
     max_positions = 20
-    create_new_positions(max_positions, conn, um_futures_client, strategy)
+    # create_new_positions(max_positions, conn, um_futures_client, strategy)
 
     conn.commit()
     conn.close()
 
     global text_position
 
-    if text_position and not time_is_between(datetime.utcnow().time().strftime("%H:%M"), ("18:30", "02:30")):
-        twilio_keys = get_db_details(connections_file, 'TWILIO_KEY')
-        send_sms(text_position, twilio_keys)
+    # if text_position and not time_is_between(datetime.utcnow().time().strftime("%H:%M"), ("18:30", "02:30")):
+    #     twilio_keys = get_db_details(connections_file, 'TWILIO_KEY')
+    #     send_sms(text_position, twilio_keys)
 
 
 if __name__ == "__main__":

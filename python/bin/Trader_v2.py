@@ -264,7 +264,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                     close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
                 closing_order_id = profit_src_order_id
             elif response_loss['status'] == 'FILLED':
-                logging.info("Loss order id %s is filled. Position Closed on its own with Loss.", profit_src_order_id)
+                logging.info("Loss order id %s is filled. Position Closed on its own with Loss.", loss_src_order_id)
                 logging.info("Cancelling the profit order.")
                 if profit_order_id:
                     close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
@@ -614,7 +614,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     if total_new_positions > 0:
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-        each_position_amount = float(total_wallet_amount / 5) / total_positions
+        each_position_amount = float(total_wallet_amount / 4) / total_positions
 
         for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
