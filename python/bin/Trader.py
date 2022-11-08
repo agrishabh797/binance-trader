@@ -829,7 +829,11 @@ def main():
     position_ids = get_existing_positions(conn)
 
     for position_id in position_ids:
-        check_current_status_and_update(position_id, conn, um_futures_client)
+        try:
+            check_current_status_and_update(position_id, conn, um_futures_client)
+        except Exception as e:
+            print(e)
+            continue
 
     logging.info("Checking if we can create New Positions: ")
 
