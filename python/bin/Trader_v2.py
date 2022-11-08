@@ -665,7 +665,7 @@ def main():
     if not os.path.exists(log_directory):
         os.makedirs(log_directory)
 
-    log_file_name = log_directory + '/Trader_' + strategy + '_' + current_time.strftime('%Y%m%d%H%M%S') + '.log'
+    log_file_name = log_directory + '/Trader_' + '_' + current_time.strftime('%Y%m%d%H%M%S') + '.log'
     config_logging(logging, logging.INFO, log_file=log_file_name)
     logging.info("Trader Script Started at %s", current_timestamp)
 
