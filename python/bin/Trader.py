@@ -424,7 +424,7 @@ def get_wallet_utilization(conn, um_futures_client):
 
 
 def decide_side(symbol, um_futures_client):
-    candles = um_futures_client.klines(symbol=symbol, interval="3", limit=41)
+    candles = um_futures_client.klines(symbol=symbol, interval="3m", limit=41)
     open_for_range = float(candles[0][1])
     close_for_range = float(candles[-1][4])
     high_for_range = float(candles[0][1])
