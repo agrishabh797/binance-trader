@@ -48,11 +48,10 @@ def main():
 
     text_position = ''
 
-    query = """select symbol, net_pnl, created_ts from positions p where (DATE_PART('day', current_timestamp::timestamp - updated_ts::timestamp) * 24 + DATE_PART('hour', current_timestamp::timestamp - updated_ts::timestamp)) <= 1 and position_status = 'CLOSED';"""
+    query = """select symbol, net_pnl, updated_ts from positions p where (DATE_PART('day', current_timestamp::timestamp - updated_ts::timestamp) * 24 + DATE_PART('hour', current_timestamp::timestamp - updated_ts::timestamp)) <= 1 and position_status = 'CLOSED';"""
     cursor = conn.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
-    print(rows)
     for row in rows:
         print(row)
         text_position = text_position + str(row[0]) + " closed with NET PNL " + str(round(float(row[1]), 2)) + "\n"
