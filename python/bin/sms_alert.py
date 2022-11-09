@@ -28,7 +28,8 @@ def send_sms(text_message, config):
 
 def main():
     # Set the config parameters using the config file
-    current_time = datetime.now()
+    current_time = datetime.utcnow()
+    print(current_time)
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
     home_dir = os.path.expanduser('~')
@@ -37,11 +38,7 @@ def main():
     connections_file = home_dir + '/.secure/connections.yaml'
     configs = read_env(config_file)
 
-    log_base_directory = configs["LOG_BASE_DIRECTORY"]
     database_identifier = configs["DATABASE_IDENTIFIER"]
-    # Setting the Logging
-
-    logging.info("Creating Database Connection")
 
     conn_details = get_db_details(connections_file, database_identifier)
     conn = psycopg2.connect(database=conn_details["DATABASE_NAME"],
@@ -49,8 +46,6 @@ def main():
                             host=conn_details["HOST_NAME"], port=conn_details["PORT"]
                             )
 
-    logging.info("Connection Details: ")
-    logging.info(conn)
     text_position = ''
 
     query = """select symbol, net_pnl, created_ts from positions p where position_status = 'CLOSED';"""
