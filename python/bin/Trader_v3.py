@@ -231,10 +231,10 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         profit_order_id = order_data[0]
         profit_src_order_id = order_data[1]
 
-    loss_sql = """ select id, src_order_id from orders 
+    limit_sql = """ select id, src_order_id from orders 
                                     where position_id = {} and type = 'LIMIT' and status = 'NEW'""".format(position_id)
     cursor = conn.cursor()
-    cursor.execute(loss_sql)
+    cursor.execute(limit_sql)
     order_data = cursor.fetchone()
     cursor.close()
     limit_order_id = None
