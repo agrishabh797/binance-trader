@@ -338,6 +338,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 else:
                     logging.info(
                         "Ratio of current margin and starting margin is %s, hence not creating another limit order. We will just wait..", ratio)
+                    position_status = "ALL_IN"
                 logging.info("Position updated with following")
                 logging.info("Position Id: %s", str(position_id))
                 logging.info("Symbol     : %s", str(symbol))
