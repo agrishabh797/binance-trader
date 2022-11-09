@@ -15,8 +15,6 @@ from twilio.rest import Client
 from binance.error import ClientError
 
 
-text_position = ''
-
 def create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client):
 
     # Create New Order for 25% loss for 50% addition of original margin
@@ -248,7 +246,6 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
     hours_diff = (current_time - created_ts).total_seconds() / 3600
 
-    global text_position
     if current_margin == 0.0 or (((5 < current_pnl_percentage) and hours_diff >= 36) or ((-10 < current_pnl_percentage < 0) and hours_diff >= 48)):
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
         if current_margin == 0.0:
@@ -324,7 +321,6 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         logging.info("FEE    : %s", str(total_fee))
         logging.info("NET_PNL: %s", str(net_pnl))
 
-        text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
     else:
         logging.info("Position is not closed.")
         if limit_src_order_id is not None:
@@ -347,7 +343,6 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 logging.info("Symbol     : %s", str(symbol))
                 logging.info("Margin     : %s", str(current_margin))
                 logging.info("Quantity   : %s", str(position_quantity))
-                # text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 2)) + "\n"
         elif limit_src_order_id is None:
             ratio = float(current_margin / starting_margin)
             if ratio < 2.9:
@@ -579,8 +574,6 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
     logging.info("Margin     : %s", str(starting_margin))
     logging.info("Quantity   : %s", str(position_quantity))
 
-    global text_position
-    # text_position = text_position + str(symbol) + " created with margin " + str(round(starting_margin, 2)) + "\n"
 
 
 def check_and_update_symbols(conn, um_futures_client):
@@ -662,20 +655,6 @@ def create_new_positions(max_positions, conn, um_futures_client):
                 break
 
 
-
-
-def send_sms(text_message, config):
-    account_sid = config['TWILIO_ACCOUNT_SID']
-    auth_token = config['TWILIO_AUTH_TOKEN']
-    client = Client(account_sid, auth_token)
-
-    message = client.messages \
-        .create(
-        body=text_message,
-        from_='+18316041992',
-        to='+917709452797'
-    )
-
 def time_is_between(time, time_range):
     if time_range[1] < time_range[0]:
         return time >= time_range[0] or time <= time_range[1]
@@ -743,12 +722,6 @@ def main():
 
     conn.commit()
     conn.close()
-
-    global text_position
-
-    if text_position and not time_is_between(datetime.utcnow().time().strftime("%H:%M"), ("18:30", "02:30")):
-        twilio_keys = get_db_details(connections_file, 'TWILIO_KEY')
-        send_sms(text_position, twilio_keys)
 
 
 if __name__ == "__main__":
