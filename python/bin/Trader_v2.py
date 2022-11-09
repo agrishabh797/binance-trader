@@ -63,8 +63,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 45% of margin is our profit
-    profit = float((45 * current_margin) / 100)
+    # 40% of margin is our profit
+    profit = float((40 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -359,6 +359,69 @@ def get_wallet_utilization(conn, um_futures_client):
     return percent_utilization
 
 
+def decide_side(symbol, um_futures_client):
+    minute = int(datetime.utcnow().time().strftime("%M"))
+    if 0 <= minute % 15 <= 7:
+        candles = um_futures_client.klines(symbol=symbol, interval="15m", limit=10)[:-1]
+    else:
+        candles = um_futures_client.klines(symbol=symbol, interval="15m", limit=9)
+    open_for_range = float(candles[0][1])
+    close_for_range = float(candles[-1][4])
+    count = 0
+    trends = []
+    # print(candles[0])
+    for candle in candles:
+        # print(candle)
+        open = float(candle[1])
+        close = float(candle[4])
+        per = (close - open) * 100 / open
+        if per <= 0:
+            count = count - 1
+            trends.append(-1)
+        else:
+            count = count + 1
+            trends.append(1)
+        print(per)
+    print(trends)
+    range_per = (close_for_range - open_for_range) * 100 / open_for_range
+    if -9 <= count <= -7:
+        side = 'SELL'
+    elif 7 <= count <= 9:
+        side = 'BUY'
+    elif -3 <= count <= 3:
+        if range_per <= 0:
+            if trends[-1] == 1 and trends[-2] == 1:
+                side = 'BUY'
+            else:
+                side = 'SELL'
+        else:
+            if trends[-1] == -1 and trends[-2] == -1:
+                side = 'SELL'
+            else:
+                side = 'BUY'
+    elif -6 <= count <= -4:
+        if range_per <= 0:
+            if trends[-1] == 1 and trends[-2] == 1:
+                side = 'BUY'
+            else:
+                side = 'SELL'
+        else:
+            side = 'SELL'
+    elif 4 <= count <= 6:
+        if range_per <= 0:
+            if trends[-1] == -1 and trends[-2] == -1:
+                side = 'SELL'
+            else:
+                side = 'BUY'
+        else:
+                side = 'BUY'
+    # print(open_for_range)
+    # print(high_for_range, index_high)
+    # print(low_for_range, index_low)
+    # print(close_for_range)
+    # print(side)
+    return side
+
 def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn):
     sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status in ('OPEN', 'ALL_IN'))"
     cursor = conn.cursor()
@@ -598,7 +661,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
 
     # update
-    total_positions = 16
+    total_positions = 10
     cursor = conn.cursor()
 
     cursor.execute(sql_buy)
@@ -705,13 +768,6 @@ def main():
 
     conn.commit()
     conn.close()
-
-    global text_position
-
-    if text_position and not time_is_between(datetime.utcnow().time().strftime("%H:%M"), ("18:30", "02:30")):
-        twilio_keys = get_db_details(connections_file, 'TWILIO_KEY')
-        send_sms(text_position, twilio_keys)
-
 
 if __name__ == "__main__":
     main()
