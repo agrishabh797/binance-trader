@@ -53,12 +53,16 @@ def main():
     logging.info(conn)
     text_position = ''
 
-    query = """select symbol, net_pnl from positions p where (DATE_PART('day', current_timestamp::timestamp - updated_ts::timestamp) * 24 + DATE_PART('hour', current_timestamp::timestamp - updated_ts::timestamp)) <= 1 and position_status = 'CLOSED';"""
+    query = """select symbol, net_pnl, created_ts from positions p where position_status = 'CLOSED';"""
     cursor = conn.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
+    print(rows)
     for row in rows:
-        text_position = text_position + str(row[0]) + " closed with NET PNL " + str(round(float(row[1]), 2)) + "\n"
+        print(row)
+        time_diff = (current_time - row[2]).total_seconds() / 3600
+        if time_diff <= 1:
+            text_position = text_position + str(row[0]) + " closed with NET PNL " + str(round(float(row[1]), 2)) + "\n"
 
     if text_position:
         text_position = "Since Last hour - \n" + text_position
