@@ -394,7 +394,11 @@ def get_wallet_utilization(conn, um_futures_client):
 
 
 def decide_side(symbol, um_futures_client):
-    candles = um_futures_client.klines(symbol=symbol, interval="15m", limit=9)
+    minute = int(datetime.utcnow().time().strftime("%M"))
+    if 0 <= minute % 15 <= 7:
+        candles = um_futures_client.klines(symbol=symbol, interval="15m", limit=10)[:-1]
+    else:
+        candles = um_futures_client.klines(symbol=symbol, interval="15m", limit=9)
     open_for_range = float(candles[0][1])
     close_for_range = float(candles[-1][4])
     count = 0
@@ -689,7 +693,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
 
     # update
-    total_positions = 16
+    total_positions = 6
     cursor = conn.cursor()
 
     cursor.execute(sql_buy)
