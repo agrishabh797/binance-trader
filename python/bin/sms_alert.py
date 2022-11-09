@@ -48,18 +48,19 @@ def main():
 
     text_position = ''
 
-    query = """select symbol, net_pnl, created_ts from positions p where position_status = 'CLOSED';"""
+    query = """select symbol, net_pnl, created_ts from positions p where (DATE_PART('day', current_timestamp::timestamp - updated_ts::timestamp) * 24 + DATE_PART('hour', current_timestamp::timestamp - updated_ts::timestamp)) <= 1 and position_status = 'CLOSED';"""
     cursor = conn.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
     print(rows)
     for row in rows:
         print(row)
-        time_diff = (current_time - row[2]).total_seconds() / 3600
-        if time_diff <= 1:
-            text_position = text_position + str(row[0]) + " closed with NET PNL " + str(round(float(row[1]), 2)) + "\n"
+        text_position = text_position + str(row[0]) + " closed with NET PNL " + str(round(float(row[1]), 2)) + "\n"
 
     if text_position:
         text_position = "Since Last hour - \n" + text_position
         twilio_keys = get_db_details(connections_file, 'TWILIO_KEY')
         send_sms(text_position, twilio_keys)
+
+if __name__ == "__main__":
+    main()
