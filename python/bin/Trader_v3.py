@@ -232,7 +232,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         profit_src_order_id = order_data[1]
 
     loss_sql = """ select id, src_order_id from orders 
-                                    where position_id = {} and type = 'STOP_MARKET' and status = 'NEW'""".format(position_id)
+                                    where position_id = {} and type = 'LIMIT' and status = 'NEW'""".format(position_id)
     cursor = conn.cursor()
     cursor.execute(loss_sql)
     order_data = cursor.fetchone()
