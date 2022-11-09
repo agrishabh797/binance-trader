@@ -393,7 +393,66 @@ def get_wallet_utilization(conn, um_futures_client):
     return percent_utilization
 
 
-def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn):
+def decide_side(symbol, um_futures_client):
+    candles = um_futures_client.klines(symbol=symbol, interval="15m", limit=9)
+    open_for_range = float(candles[0][1])
+    close_for_range = float(candles[-1][4])
+    count = 0
+    trends = []
+    # print(candles[0])
+    for candle in candles:
+        # print(candle)
+        open = float(candle[1])
+        close = float(candle[4])
+        per = (close - open) * 100 / open
+        if per <= 0:
+            count = count - 1
+            trends.append(-1)
+        else:
+            count = count + 1
+            trends.append(1)
+        print(per)
+    print(trends)
+    range_per = (close_for_range - open_for_range) * 100 / open_for_range
+    if -9 <= count <= -7:
+        side = 'SELL'
+    elif 7 <= count <= 9:
+        side = 'BUY'
+    elif -3 <= count <= 3:
+        if range_per <= 0:
+            if trends[-1] == 1 and trends[-2] == 1:
+                side = 'BUY'
+            else:
+                side = 'SELL'
+        else:
+            if trends[-1] == -1 and trends[-2] == -1:
+                side = 'SELL'
+            else:
+                side = 'BUY'
+    elif -6 <= count <= -4:
+        if range_per <= 0:
+            if trends[-1] == 1 and trends[-2] == 1:
+                side = 'BUY'
+            else:
+                side = 'SELL'
+        else:
+            side = 'SELL'
+    elif 4 <= count <= 6:
+        if range_per <= 0:
+            if trends[-1] == -1 and trends[-2] == -1:
+                side = 'SELL'
+            else:
+                side = 'BUY'
+        else:
+                side = 'BUY'
+    # print(open_for_range)
+    # print(high_for_range, index_high)
+    # print(low_for_range, index_low)
+    # print(close_for_range)
+    # print(side)
+    return side
+
+def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client):
     sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status in ('OPEN', 'ALL_IN'))"
     cursor = conn.cursor()
     cursor.execute(sql)
@@ -405,7 +464,7 @@ def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_p
     random.shuffle(l)
     for i in range(total_new_positions):
         symbol = new_positions_selected.pop()
-        side = l.pop()
+        side = decide_side(symbol, um_futures_client) # l.pop()
         new_positions_ordered[symbol] = side
 
     return new_positions_ordered
@@ -644,7 +703,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
     if total_new_positions > 0:
-        new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn)
+        new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 4) / total_positions
 
