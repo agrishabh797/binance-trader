@@ -422,7 +422,7 @@ def decide_side(symbol, um_futures_client):
     # print(side)
     return side
 
-def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn):
+def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client):
     sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status in ('OPEN', 'ALL_IN'))"
     cursor = conn.cursor()
     cursor.execute(sql)
@@ -434,7 +434,7 @@ def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_p
     random.shuffle(l)
     for i in range(total_new_positions):
         symbol = new_positions_selected.pop()
-        side = l.pop()
+        side = decide_side(symbol, um_futures_client)
         new_positions_ordered[symbol] = side
 
     return new_positions_ordered
@@ -675,7 +675,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
     if total_new_positions > 0:
-        new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn)
+        new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 4) / total_positions
 
