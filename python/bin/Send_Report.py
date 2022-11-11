@@ -70,16 +70,15 @@ def get_wallet_utilization(conn, um_futures_client):
 def send_email(subject, html, mail_config):
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
-    message["From"] = mail_config['From']
-    message["To"] = mail_config['To']
-    password = 'ytlbdomosqabcxfw'
+    message["From"] = mail_config['FROM']
+    message["To"] = mail_config['TO']
     message.attach(MIMEText(html, "html"))
 
     context = ssl.create_default_context()
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
-        server.login(mail_config['From'], mail_config['Password'])
+        server.login(mail_config['FROM'], mail_config['PASSWORD'])
         server.sendmail(
-            mail_config['From'], mail_config['To'], message.as_string()
+            mail_config['FROM'], mail_config['TO'], message.as_string()
         )
 
 
@@ -124,7 +123,7 @@ def main():
         sms_text = "Binance Futures Yesterday ({})'s Total PNL - {} \n".format(yesterday, str(round(float(total_pnl), 2)))
         sms_text = sms_text + "For detailed summary check mail."
         plivo_keys = get_db_details(connections_file, 'PLIVO_KEY')
-        send_sms(sms_text, plivo_keys, 'plivo')
+        send_sms(sms_text, plivo_keys, 'PLIVO')
 
     if email_summary:
         binance_keys = get_db_details(connections_file, 'BINANCE_KEY')
