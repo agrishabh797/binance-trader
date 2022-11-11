@@ -25,8 +25,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 60% of margin is our loss
-    profit = float((60 * current_margin) / 100)
+    # 50% of margin is our loss
+    profit = float((50 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - profit
@@ -63,8 +63,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 25% of margin is our profit
-    profit = float((25 * current_margin) / 100)
+    # 30% of margin is our profit
+    profit = float((30 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -661,7 +661,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
 
     # update
-    total_positions = 6
+    total_positions = 8
     cursor = conn.cursor()
 
     cursor.execute(sql_buy)
