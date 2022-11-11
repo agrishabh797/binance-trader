@@ -143,10 +143,10 @@ def main():
                {}<br>
                <b>Total PNL:</b> {}<br><br>
                As of now - 
-               <pre><b>Total Wallet Amount</b>      : {}</pre><br>
-               <pre><b>Utilized Wallet Amount</b>   : {}</pre><br>
-               <pre><b>Unutilized Wallet Amount</b> : {}</pre><br>
-               <pre><b>Wallet Utilization</b>       : {}%</pre><br><br>
+               <pre><b>Total Wallet Amount</b>      : {}</pre>
+               <pre><b>Utilized Wallet Amount</b>   : {}</pre>
+               <pre><b>Unutilized Wallet Amount</b> : {}</pre>
+               <pre><b>Wallet Utilization</b>       : {}%</pre><br>
                Thanks
             </p>
           </body>
