@@ -37,6 +37,7 @@ def send_sms(text_message, config, sms_app):
             src='RISHABH',
             dst='+917709452797',
             text=text_message, )
+    print(message)
 
 
 def get_utilized_wallet_amount(conn):
@@ -137,12 +138,12 @@ def main():
         <html>
           <body>
             <p>Hi,<br><br>
-               Summary for <b>Yesterday ({}):<\b><br>
+               Summary for <b>Yesterday ({}):<\\b><br>
                {}<br>
-               <b>Total Wallet Amount<\b>      : {}<br>
-               <b>Utilized Wallet Amount<\b>   : {}<br>
-               <b>Unutilized Wallet Amount<\b> : {}<br>
-               <b>Wallet Utilization<\b>       : {}<br><br>
+               <b>Total Wallet Amount<\\b>      : {}<br>
+               <b>Utilized Wallet Amount<\\b>   : {}<br>
+               <b>Unutilized Wallet Amount<\\b> : {}<br>
+               <b>Wallet Utilization<\\b>       : {}%<br><br>
                Thanks
             </p>
           </body>
