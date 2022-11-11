@@ -142,7 +142,7 @@ def main():
                Summary for <b>Yesterday ({}):</b><br><br>
                {}<br>
                <b>Total PNL:</b> {}<br><br>
-               As of now - 
+               As of now - <br>
                <b>Total Wallet Amount</b>      : {}<br>
                <b>Utilized Wallet Amount</b>   : {}<br>
                <b>Unutilized Wallet Amount</b> : {}<br>
