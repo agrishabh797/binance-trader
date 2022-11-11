@@ -120,13 +120,14 @@ def main():
         email_summary = email_summary + str(row[0]) + " closed with NET PNL " + str(round(float(row[1]), 2)) + "<br>"
         total_pnl = total_pnl + float(row[1])
 
-    if sms_text:
+
+    if email_summary:
         sms_text = "Binance Futures Yesterday ({})'s Total PNL - {} \n".format(yesterday, str(round(float(total_pnl), 2)))
         sms_text = sms_text + "For detailed summary check mail."
         plivo_keys = get_db_details(connections_file, 'PLIVO_KEY')
         send_sms(sms_text, plivo_keys, 'PLIVO')
 
-    if email_summary:
+
         binance_keys = get_db_details(connections_file, 'BINANCE_KEY')
         um_futures_client = UMFutures(key=binance_keys['API_KEY'], secret=binance_keys['SECRET_KEY'])
         mail_config = get_db_details(connections_file, 'EMAIL')
@@ -138,12 +139,12 @@ def main():
         <html>
           <body>
             <p>Hi,<br><br>
-               Summary for <b>Yesterday ({}):<\\b><br>
+               Summary for <b>Yesterday ({}):</b><br><br>
                {}<br>
-               <b>Total Wallet Amount<\\b>      : {}<br>
-               <b>Utilized Wallet Amount<\\b>   : {}<br>
-               <b>Unutilized Wallet Amount<\\b> : {}<br>
-               <b>Wallet Utilization<\\b>       : {}%<br><br>
+               <b>Total Wallet Amount</b>      : {}<br>
+               <b>Utilized Wallet Amount</b>   : {}<br>
+               <b>Unutilized Wallet Amount</b> : {}<br>
+               <b>Wallet Utilization</b>       : {}%<br><br>
                Thanks
             </p>
           </body>
