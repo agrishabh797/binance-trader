@@ -122,7 +122,7 @@ def main():
 
 
     if email_summary:
-        sms_text = "Binance Futures Yesterday ({})'s Total PNL - {} \n".format(yesterday, str(round(float(total_pnl), 2)))
+        sms_text = "Binance Futures Yesterday ({})'s Total PNL: {} \n".format(yesterday, str(round(float(total_pnl), 2)))
         sms_text = sms_text + "For detailed summary check mail."
         plivo_keys = get_db_details(connections_file, 'PLIVO_KEY')
         send_sms(sms_text, plivo_keys, 'PLIVO')
@@ -141,15 +141,17 @@ def main():
             <p>Hi,<br><br>
                Summary for <b>Yesterday ({}):</b><br><br>
                {}<br>
-               <b>Total Wallet Amount</b>      : {}<br>
-               <b>Utilized Wallet Amount</b>   : {}<br>
-               <b>Unutilized Wallet Amount</b> : {}<br>
-               <b>Wallet Utilization</b>       : {}%<br><br>
+               <b>Total PNL:</b> {}<br><br>
+               As of now - 
+               <pre><b>Total Wallet Amount</b>      : {}</pre><br>
+               <pre><b>Utilized Wallet Amount</b>   : {}</pre><br>
+               <pre><b>Unutilized Wallet Amount</b> : {}</pre><br>
+               <pre><b>Wallet Utilization</b>       : {}%</pre><br><br>
                Thanks
             </p>
           </body>
         </html>
-        """.format(yesterday, email_summary, str(round(float(total_wallet_amount), 2)), str(round(float(utilized_wallet_amount), 2)), str(round(float(unused_wallet_amount), 2)), str(round(float(wallet_utilization), 2)))
+        """.format(yesterday, email_summary, str(round(float(total_pnl), 2)), str(round(float(total_wallet_amount), 2)), str(round(float(utilized_wallet_amount), 2)), str(round(float(unused_wallet_amount), 2)), str(round(float(wallet_utilization), 2)))
         subject = "Binance Futures Summary for Yesterday {}".format(yesterday)
         send_email(subject, html, mail_config)
 if __name__ == "__main__":
