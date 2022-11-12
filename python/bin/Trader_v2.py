@@ -544,7 +544,7 @@ def get_rounded_quantity(symbol, price, um_futures_client):
 def create_position(symbol, side, each_position_amount, conn, um_futures_client):
 
 
-    leverage = 10
+    leverage = 15
     exchange_info = get_exchange_info(symbol, um_futures_client)
     current_time = datetime.utcnow()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
