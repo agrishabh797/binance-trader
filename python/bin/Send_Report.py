@@ -161,7 +161,7 @@ def main():
               border-collapse: collapse;
             }}
             th, td {{
-              padding: 15px;
+              padding: 5px;
             }}
             </style>
             </head>
@@ -178,13 +178,13 @@ def main():
                 </tr>
                {}
                 <tr>
-                    <td colspan="2"><b>Total</b></td>
+                    <td colspan="4"><b>Total</b></td>
                     <td style="text-align:right;color:{}">{}</td>
                 </tr>
                </table><br>
                <table>
                 <tr>
-                    <th colspan="3">As of now - </th>
+                    <th colspan="2">As of now - </th>
                 </tr>
                 <tr>
                     <td><b>Total Wallet Amount</b></td><td>{}</td>
