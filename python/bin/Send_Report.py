@@ -160,6 +160,9 @@ def main():
               border: 1px solid black;
               border-collapse: collapse;
             }}
+            th, td {{
+              padding: 15px;
+            }}
             </style>
             </head>
           <body>
@@ -181,7 +184,7 @@ def main():
                </table><br>
                <table>
                 <tr>
-                    <th colspan="2">As of now - </th>
+                    <th colspan="3">As of now - </th>
                 </tr>
                 <tr>
                     <td><b>Total Wallet Amount</b></td><td>{}</td>
@@ -194,7 +197,8 @@ def main():
                 </tr>
                 <tr>    
                     <td><b>Wallet Utilization</b></td><td>{}</td>
-                </tr><br>
+                </tr>
+               </table><br>
                Thanks
             </p>
           </body>
