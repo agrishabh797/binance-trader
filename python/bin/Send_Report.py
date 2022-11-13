@@ -110,23 +110,36 @@ def main():
 
     sms_text = ''
     email_summary = ''
-    query = """select symbol, net_pnl from positions p where date(updated_ts) = '{}' and position_status = 'CLOSED';""".format(yesterday)
+    query = """select symbol, side, current_margin, net_pnl from positions p where date(updated_ts) = '{}' and position_status = 'CLOSED';""".format(yesterday)
     cursor = conn.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
     total_pnl = 0.0
+    index = 1
     for row in rows:
+        symbol = row[0]
+        side = row[1]
+        current_margin = round(float(row[2]), 2)
+        net_pnl = round(float(row[3]), 2)
         print(row)
-        email_summary = email_summary + str(row[0]) + " closed with NET PNL " + str(round(float(row[1]), 2)) + "<br>"
+        if side == "BUY":
+            color_s = "green"
+        else:
+            color_s = "red"
+        if net_pnl < 0:
+            color_p = "red"
+        else:
+            color_p = "green"
+        email_summary = email_summary + '<tr><td>{}</td> <td>{}</td> <td style="color:{}">{}</td> <td>{}</td> <td style="text-align:right;color:{}}">{}</td></tr>'.format(index, symbol, color_s, side, current_margin, color_p, net_pnl)
         total_pnl = total_pnl + float(row[1])
+        index = index + 1
 
 
     if email_summary:
         sms_text = "Binance Futures Yesterday ({})'s Total PNL: {} \n".format(yesterday, str(round(float(total_pnl), 2)))
         sms_text = sms_text + "For detailed summary check mail."
         plivo_keys = get_db_details(connections_file, 'PLIVO_KEY')
-        send_sms(sms_text, plivo_keys, 'PLIVO')
-
+        # send_sms(sms_text, plivo_keys, 'PLIVO')
 
         binance_keys = get_db_details(connections_file, 'BINANCE_KEY')
         um_futures_client = UMFutures(key=binance_keys['API_KEY'], secret=binance_keys['SECRET_KEY'])
@@ -135,24 +148,52 @@ def main():
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         utilized_wallet_amount = get_utilized_wallet_amount(conn)
         unused_wallet_amount = get_unused_wallet_amount(um_futures_client)
+        if total_pnl < 0:
+            color_t = "red"
+        else:
+            color_t = "green"
         html = """\
         <html>
           <body>
             <p>Hi,<br><br>
                Summary for <b>Yesterday ({}):</b><br><br>
-               {}<br>
-               <b>Total PNL:</b> {}<br><br>
-               As of now - <br>
-               <b>Total Wallet Amount</b>      : {}<br>
-               <b>Utilized Wallet Amount</b>   : {}<br>
-               <b>Unutilized Wallet Amount</b> : {}<br>
-               <b>Wallet Utilization</b>       : {}%<br><br>
+               <table>
+                <tr>
+                    <th>Index</th>
+                    <th>Symbol</th>
+                    <th>Side</th>
+                    <th>Margin</th>
+                    <th>Net PNL</th>
+                </tr>
+               {}
+                <tr>
+                    <td colspan="2"><b>Total</b></td>
+                    <td style="text-align:right;color:{}">{}</td>
+                </tr>
+               </table><br>
+               <table>
+                <tr>
+                    <th colspan="2">As of now - </th>
+                </tr>
+                <tr>
+                    <td><b>Total Wallet Amount</b></td><td>{}</td>
+                </tr>
+                <tr>
+                    <td><b>Utilized Wallet Amount</b></td><td>{}</td>
+                </tr>
+                <tr>    
+                    <td><b>Unutilized Wallet Amount</b></td><td>{}</td>
+                </tr>
+                <tr>    
+                    <td><b>Wallet Utilization</b></td><td>{}</td>
+                </tr><br>
                Thanks
             </p>
           </body>
         </html>
-        """.format(yesterday, email_summary, str(round(float(total_pnl), 2)), str(round(float(total_wallet_amount), 2)), str(round(float(utilized_wallet_amount), 2)), str(round(float(unused_wallet_amount), 2)), str(round(float(wallet_utilization), 2)))
+        """.format(yesterday, email_summary, color_t, str(round(float(total_pnl), 2)), str(round(float(total_wallet_amount), 2)), str(round(float(utilized_wallet_amount), 2)), str(round(float(unused_wallet_amount), 2)), str(round(float(wallet_utilization), 2)))
         subject = "Binance Futures Summary for Yesterday {}".format(yesterday)
+        print(html)
         send_email(subject, html, mail_config)
 if __name__ == "__main__":
     main()
