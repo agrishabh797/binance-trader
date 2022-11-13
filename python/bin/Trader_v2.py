@@ -677,7 +677,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     if total_new_positions > 0:
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-        each_position_amount = float(total_wallet_amount / 4) / total_positions
+        each_position_amount = float(total_wallet_amount / 5) / total_positions
 
         for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
