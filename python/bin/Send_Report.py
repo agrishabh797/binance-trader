@@ -154,6 +154,14 @@ def main():
             color_t = "green"
         html = """\
         <html>
+        <head>
+            <style>
+            table, th, td {{
+              border: 1px solid black;
+              border-collapse: collapse;
+            }}
+            </style>
+            </head>
           <body>
             <p>Hi,<br><br>
                Summary for <b>Yesterday ({}):</b><br><br>
