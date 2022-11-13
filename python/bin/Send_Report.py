@@ -110,7 +110,7 @@ def main():
 
     sms_text = ''
     email_summary = ''
-    query = """select symbol, side, current_margin, net_pnl from positions p where date(updated_ts) = '{}' and position_status = 'CLOSED';""".format(yesterday)
+    query = """select symbol, side, current_margin, net_pnl from positions p where date(updated_ts) = '{}' and position_status = 'CLOSED' order by updated_ts desc;""".format(yesterday)
     cursor = conn.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()

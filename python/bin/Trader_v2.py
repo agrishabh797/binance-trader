@@ -423,7 +423,7 @@ def decide_side(symbol, um_futures_client):
     return side
 
 def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client):
-    sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status in ('OPEN', 'ALL_IN'))"
+    sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status in ('OPEN', 'ALL_IN') or (DATE_PART('day', current_timestamp::timestamp - created_ts::timestamp) = 1 and position_status = 'CLOSED'))"
     cursor = conn.cursor()
     cursor.execute(sql)
     new_positions = cursor.fetchall()
