@@ -130,8 +130,8 @@ def main():
             color_p = "red"
         else:
             color_p = "green"
-        email_summary = email_summary + '<tr><td>{}</td> <td>{}</td> <td style="color:{}">{}</td> <td>{}</td> <td style="text-align:right;color:{}}">{}</td></tr>'.format(index, symbol, color_s, side, current_margin, color_p, net_pnl)
-        total_pnl = total_pnl + float(row[1])
+        email_summary = email_summary + '<tr><td>{}</td> <td>{}</td> <td style="color:{}">{}</td> <td>{}</td> <td style="text-align:right;color:{}">{}</td></tr>'.format(index, symbol, color_s, side, current_margin, color_p, net_pnl)
+        total_pnl = total_pnl + net_pnl
         index = index + 1
 
 
