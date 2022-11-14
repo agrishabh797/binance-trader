@@ -25,8 +25,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 15% of margin is our loss
-    profit = float((15 * current_margin) / 100)
+    # 20% of margin is our loss
+    profit = float((20 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - profit
@@ -63,8 +63,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 35% of margin is our profit
-    profit = float((35 * current_margin) / 100)
+    # 50% of margin is our profit
+    profit = float((50 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -664,7 +664,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
 
     # update
-    total_positions = 8
+    total_positions = 12
     cursor = conn.cursor()
 
     cursor.execute(sql_buy)
@@ -680,7 +680,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     if total_new_positions > 0:
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-        each_position_amount = float(total_wallet_amount / 5) / total_positions
+        each_position_amount = float(total_wallet_amount / 4.5) / total_positions
 
         for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
