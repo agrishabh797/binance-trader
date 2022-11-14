@@ -241,7 +241,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     hours_diff = (current_time - created_ts).total_seconds() / 3600
 
     global text_position
-    if current_margin == 0.0 or ((5 < abs(current_pnl_percentage)) and hours_diff >= 36):
+    if current_margin == 0.0 or (((5 < current_pnl_percentage) and hours_diff >= 2) or ((-5 < current_pnl_percentage) and hours_diff >= 10)):
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
         if current_margin == 0.0:
             logging.info("Current Margin is 0.0. Checking if closed with Profit, Loss or Manually.")
