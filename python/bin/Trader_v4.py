@@ -412,7 +412,7 @@ def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_p
     random.shuffle(l)
     for i in range(total_new_positions):
         symbol = new_positions_selected.pop()
-        side = decide_side(symbol, um_futures_client)
+        side = l.pop() #decide_side(symbol, um_futures_client)
         new_positions_ordered[symbol] = side
 
     return new_positions_ordered
