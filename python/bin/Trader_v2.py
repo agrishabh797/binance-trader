@@ -25,8 +25,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 20% of margin is our loss
-    profit = float((20 * current_margin) / 100)
+    # 15% of margin is our loss
+    profit = float((15 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - profit
@@ -63,8 +63,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 50% of margin is our profit
-    profit = float((50 * current_margin) / 100)
+    # 20% of margin is our profit
+    profit = float((20 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -544,7 +544,7 @@ def get_rounded_quantity(symbol, price, um_futures_client):
 def create_position(symbol, side, each_position_amount, conn, um_futures_client):
 
 
-    leverage = 15
+    leverage = 10
     exchange_info = get_exchange_info(symbol, um_futures_client)
     current_time = datetime.utcnow()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
