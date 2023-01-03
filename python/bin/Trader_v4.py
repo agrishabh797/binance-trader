@@ -189,7 +189,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     starting_margin = pos_data[4]
     manual_added_margin = pos_data[9]
     position_status = pos_data[10]
-    created_ts = datetime.strptime(pos_data[14], '%Y-%m-%d %H:%M:%S')
+    # created_ts = datetime.strptime(pos_data[14], '%Y-%m-%d %H:%M:%S')
+    created_ts = pos_data[14]
 
     logging.info("Checking the status for following Position")
     logging.info("Position id: %s", position_id)
@@ -314,7 +315,7 @@ def get_utilized_wallet_amount(conn):
     cursor = conn.cursor()
     cursor.execute(sql)
 
-    utilized_wallet_amount = cursor.fetchone()[0]
+    utilized_wallet_amount = float(cursor.fetchone()[0])
 
     return utilized_wallet_amount
 
@@ -657,7 +658,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
     if total_new_positions == total_positions:
-        logging.info("Last batch completed, creating new batch of % positions", total_positions)
+        logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 4.5) / total_positions
@@ -668,8 +669,6 @@ def create_new_positions(max_positions, conn, um_futures_client):
                 create_position(symbol, side, each_position_amount, conn, um_futures_client)
             elif wallet_utilization >= 30:
                 break
-
-
 
 
 def send_sms(text_message, config):
