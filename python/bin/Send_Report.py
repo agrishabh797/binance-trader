@@ -48,7 +48,7 @@ def get_utilized_wallet_amount(conn):
 
     utilized_wallet_amount = cursor.fetchone()[0]
 
-    return utilized_wallet_amount
+    return float(utilized_wallet_amount)
 
 def get_unused_wallet_amount(um_futures_client):
     account_info = um_futures_client.account()
@@ -85,7 +85,7 @@ def send_email(subject, html, mail_config):
 
 def main():
     # Set the config parameters using the config file
-    current_time = datetime.utcnow()
+    current_time = datetime.now()
     print(current_time)
     today = date.today()
     print("Today is: ", today)
@@ -139,7 +139,7 @@ def main():
         sms_text = "Binance Futures Yesterday ({})'s Total PNL: {} \n".format(yesterday, str(round(float(total_pnl), 2)))
         sms_text = sms_text + "For detailed summary check mail."
         plivo_keys = get_db_details(connections_file, 'PLIVO_KEY')
-        # send_sms(sms_text, plivo_keys, 'PLIVO')
+        send_sms(sms_text, plivo_keys, 'PLIVO')
 
         binance_keys = get_db_details(connections_file, 'BINANCE_KEY')
         um_futures_client = UMFutures(key=binance_keys['API_KEY'], secret=binance_keys['SECRET_KEY'])
