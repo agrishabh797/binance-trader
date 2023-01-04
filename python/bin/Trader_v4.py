@@ -123,7 +123,7 @@ def get_existing_positions(conn):
 
 
 def close_and_update_order(symbol, order_id, src_order_id, status, conn, um_futures_client):
-    current_time = datetime.utcnow()
+    current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
     try:
         response = um_futures_client.query_order(symbol=symbol, orderId=src_order_id)
@@ -173,7 +173,7 @@ def get_total_fee(position_id, conn):
 
 
 def check_current_status_and_update(position_id, conn, um_futures_client):
-    current_time = datetime.utcnow()
+    current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
     sql = """select id, symbol, side, leverage, starting_margin, current_margin, 
         entry_price, position_quantity, liquidation_price, manual_added_margin, position_status, closing_pnl,
@@ -339,7 +339,7 @@ def get_wallet_utilization(conn, um_futures_client):
 
 
 def decide_side(symbol, um_futures_client):
-    minute = int(datetime.utcnow().time().strftime("%M"))
+    minute = int(datetime.now().time().strftime("%M"))
     if 0 <= minute % 15 <= 7:
         candles = um_futures_client.klines(symbol=symbol, interval="15m", limit=10)[:-1]
     else:
@@ -420,7 +420,7 @@ def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_p
 
 
 def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
-    current_time = datetime.utcnow()
+    current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
     logging.info("Inserting record for orderId %s", order_id)
     postgres_insert_query = """INSERT INTO orders (position_id, src_order_id, side, type, stop_price, avg_price, 
@@ -525,7 +525,7 @@ def create_position(symbol, side, each_position_amount, conn, um_futures_client)
 
     leverage = 10
     exchange_info = get_exchange_info(symbol, um_futures_client)
-    current_time = datetime.utcnow()
+    current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
     max_l = um_futures_client.leverage_brackets(symbol=symbol)[0]['brackets'][0]['initialLeverage']
