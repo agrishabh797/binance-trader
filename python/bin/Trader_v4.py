@@ -13,6 +13,7 @@ from binance.um_futures import UMFutures
 import random
 from twilio.rest import Client
 from binance.error import ClientError
+import random
 
 
 text_position = ''
@@ -22,11 +23,12 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     exchange_info = get_exchange_info(symbol, um_futures_client)
     response = um_futures_client.get_position_risk(symbol=symbol)
     entry_price = float(response[0]['entryPrice'])
+    leverage = int(response[0]['leverage'])
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 15% of margin is our loss
-    profit = float((15 * current_margin) / 100)
+    # (1.5 * leverage) % of margin is our loss
+    profit = float((1.5 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - profit
@@ -60,11 +62,12 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     exchange_info = get_exchange_info(symbol, um_futures_client)
     response = um_futures_client.get_position_risk(symbol=symbol)
     entry_price = float(response[0]['entryPrice'])
+    leverage = int(response[0]['leverage'])
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # 20% of margin is our profit
-    profit = float((20 * current_margin) / 100)
+    # (2 * leverage) % of margin is our profit
+    profit = float((2 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -523,7 +526,8 @@ def get_rounded_quantity(symbol, price, um_futures_client):
 def create_position(symbol, side, each_position_amount, conn, um_futures_client):
 
 
-    leverage = 10
+    # leverage = 10
+    leverage = random.randint(10, 20)
     exchange_info = get_exchange_info(symbol, um_futures_client)
     current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
