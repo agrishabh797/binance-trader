@@ -188,7 +188,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     cursor.close()
     symbol = pos_data[1]
     side = pos_data[2]
-    leverage = pos_data[3]
+    leverage = float(pos_data[3])
     starting_margin = pos_data[4]
     manual_added_margin = pos_data[9]
     position_status = pos_data[10]
@@ -545,7 +545,7 @@ def create_position(symbol, side, leverage, each_position_amount, conn, um_futur
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
     max_l = um_futures_client.leverage_brackets(symbol=symbol)[0]['brackets'][0]['initialLeverage']
-    leverage = min(leverage, max_l)
+    leverage = float(min(leverage, max_l))
     response = um_futures_client.change_leverage(symbol=symbol, leverage=leverage)
     if get_margin_type(symbol, um_futures_client) == 'CROSS':
         response = um_futures_client.change_margin_type(symbol=symbol, marginType="ISOLATED")
@@ -681,7 +681,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 4.5) / total_positions
-        each_position_amount = 5
+        each_position_amount = float(5)
         for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
