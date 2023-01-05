@@ -545,7 +545,7 @@ def create_position(symbol, side, leverage, each_position_amount, conn, um_futur
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
     max_l = um_futures_client.leverage_brackets(symbol=symbol)[0]['brackets'][0]['initialLeverage']
-    leverage = float(min(leverage, max_l))
+    leverage = min(leverage, max_l)
     response = um_futures_client.change_leverage(symbol=symbol, leverage=leverage)
     if get_margin_type(symbol, um_futures_client) == 'CROSS':
         response = um_futures_client.change_margin_type(symbol=symbol, marginType="ISOLATED")
