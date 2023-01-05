@@ -19,8 +19,8 @@ import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-def send_sms(text_message, config, sms_app):
 
+def send_sms(text_message, config, sms_app):
     account_sid = config['ACCOUNT_SID']
     auth_token = config['AUTH_TOKEN']
     if sms_app == 'TWILIO':
@@ -49,6 +49,7 @@ def get_utilized_wallet_amount(conn):
     utilized_wallet_amount = cursor.fetchone()[0]
 
     return float(utilized_wallet_amount)
+
 
 def get_unused_wallet_amount(um_futures_client):
     account_info = um_futures_client.account()
@@ -110,7 +111,8 @@ def main():
 
     sms_text = ''
     email_summary = ''
-    query = """select symbol, side, current_margin, net_pnl from positions p where date(updated_ts) = '{}' and position_status = 'CLOSED' order by updated_ts desc;""".format(yesterday)
+    query = """select symbol, side, current_margin, net_pnl, leverage from positions p where date(updated_ts) = '{}' and position_status = 'CLOSED' order by updated_ts desc;""".format(
+        yesterday)
     cursor = conn.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
@@ -121,6 +123,7 @@ def main():
         side = row[1]
         current_margin = round(float(row[2]), 2)
         net_pnl = round(float(row[3]), 2)
+        leverage = row[4]
         print(row)
         if side == "BUY":
             color_s = "green"
@@ -130,13 +133,22 @@ def main():
             color_p = "red"
         else:
             color_p = "green"
-        email_summary = email_summary + '<tr><td>{}</td> <td>{}</td> <td style="color:{}">{}</td> <td>{}</td> <td style="text-align:right;color:{}">{}</td></tr>'.format(index, symbol, color_s, side, current_margin, color_p, net_pnl)
+        email_summary = email_summary + '<tr><td>{}</td> <td>{}</td> <td style="color:{}">{}</td> <td>{}</td> ' \
+                                        '<td>{}</td> <td style="text-align:right;color:{}">{}</td></tr>' \
+            .format(index,
+                    symbol,
+                    color_s,
+                    side,
+                    leverage,
+                    current_margin,
+                    color_p,
+                    net_pnl)
         total_pnl = total_pnl + net_pnl
         index = index + 1
 
-
     if email_summary:
-        sms_text = "Binance Futures Yesterday ({})'s Total PNL: {} \n".format(yesterday, str(round(float(total_pnl), 2)))
+        sms_text = "Binance Futures Yesterday ({})'s Total PNL: {} \n".format(yesterday,
+                                                                              str(round(float(total_pnl), 2)))
         sms_text = sms_text + "For detailed summary check mail."
         plivo_keys = get_db_details(connections_file, 'PLIVO_KEY')
         send_sms(sms_text, plivo_keys, 'PLIVO')
@@ -173,6 +185,7 @@ def main():
                     <th>Index</th>
                     <th>Symbol</th>
                     <th>Side</th>
+                    <th>Leverage</th>
                     <th>Margin</th>
                     <th>Net PNL</th>
                 </tr>
@@ -203,9 +216,13 @@ def main():
             </p>
           </body>
         </html>
-        """.format(yesterday, email_summary, color_t, str(round(float(total_pnl), 2)), str(round(float(total_wallet_amount), 2)), str(round(float(utilized_wallet_amount), 2)), str(round(float(unused_wallet_amount), 2)), str(round(float(wallet_utilization), 2)))
+        """.format(yesterday, email_summary, color_t, str(round(float(total_pnl), 2)),
+                   str(round(float(total_wallet_amount), 2)), str(round(float(utilized_wallet_amount), 2)),
+                   str(round(float(unused_wallet_amount), 2)), str(round(float(wallet_utilization), 2)))
         subject = "Binance Futures Summary for Yesterday {}".format(yesterday)
         print(html)
         send_email(subject, html, mail_config)
+
+
 if __name__ == "__main__":
     main()

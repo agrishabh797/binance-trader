@@ -269,11 +269,24 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         elif response_loss['status'] == 'FILLED':
             logging.info("Loss order id %s is filled. Position Closed on its own with Loss.", loss_src_order_id)
             logging.info("Cancelling the profit order.")
+
             if profit_order_id:
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
             if loss_order_id:
                 close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'FILLED', conn, um_futures_client)
             closing_order_id = loss_src_order_id
+
+            # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
+            # i.e if this was BUY lets create SELL or vice versa.
+
+            opposite_side = ''
+            if side == 'BUY':
+                opposite_side = 'SELL'
+            elif side == 'SELL':
+                opposite_side = 'BUY'
+
+            create_position(symbol, opposite_side, leverage, 5, conn, um_futures_client)
+
         else:
             logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
             logging.info("Cancelling the limit order and profit order.")
@@ -523,11 +536,10 @@ def get_lot_size(symbol, um_futures_client):
 def get_rounded_quantity(symbol, price, um_futures_client):
     return round_step_size(price, get_lot_size(symbol, um_futures_client))
 
-def create_position(symbol, side, each_position_amount, conn, um_futures_client):
+def create_position(symbol, side, leverage, each_position_amount, conn, um_futures_client):
 
 
     # leverage = 10
-    leverage = random.randint(10, 20)
     exchange_info = get_exchange_info(symbol, um_futures_client)
     current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
@@ -660,19 +672,21 @@ def create_new_positions(max_positions, conn, um_futures_client):
     new_buy_pos_count = int(total_positions / 2) - buy_pos_count
     new_sell_pos_count = int(total_positions / 2) - sell_pos_count
 
+    leverage = random.randint(10, 20)
+
     total_new_positions = new_buy_pos_count + new_sell_pos_count
-    if total_new_positions == total_positions:
+    if total_new_positions > 0:
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 4.5) / total_positions
-
+        each_position_amount = 5
         for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
-            if wallet_utilization < 30:
-                create_position(symbol, side, each_position_amount, conn, um_futures_client)
-            elif wallet_utilization >= 30:
-                break
+            # if wallet_utilization < 30:
+            create_position(symbol, side, leverage, each_position_amount, conn, um_futures_client)
+            # elif wallet_utilization >= 30:
+            #    break
 
 
 def send_sms(text_message, config):
