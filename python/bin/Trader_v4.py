@@ -284,7 +284,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 opposite_side = 'SELL'
             elif side == 'SELL':
                 opposite_side = 'BUY'
-
+            logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side, symbol)
             create_position(symbol, opposite_side, leverage, 5, conn, um_futures_client)
 
         else:
