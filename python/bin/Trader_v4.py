@@ -244,6 +244,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
     hours_diff = (current_time - created_ts).total_seconds() / 3600
 
+    create_opposite_position_flag = False
+
     global text_position
     if current_margin == 0.0:
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
@@ -279,13 +281,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
 
-            opposite_side = ''
-            if side == 'BUY':
-                opposite_side = 'SELL'
-            elif side == 'SELL':
-                opposite_side = 'BUY'
-            logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side, symbol)
-            create_position(symbol, opposite_side, leverage, 5, conn, um_futures_client)
+            create_opposite_position_flag = True
 
         else:
             logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
@@ -318,6 +314,16 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         logging.info("PNL    : %s", str(pnl))
         logging.info("FEE    : %s", str(total_fee))
         logging.info("NET_PNL: %s", str(net_pnl))
+
+        if create_opposite_position_flag:
+            opposite_side = ''
+            if side == 'BUY':
+                opposite_side = 'SELL'
+            elif side == 'SELL':
+                opposite_side = 'BUY'
+            logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
+                         symbol)
+            create_position(symbol, opposite_side, leverage, 5, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
