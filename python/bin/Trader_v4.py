@@ -188,7 +188,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     cursor.close()
     symbol = pos_data[1]
     side = pos_data[2]
-    leverage = float(pos_data[3])
+    leverage = int(pos_data[3])
     starting_margin = pos_data[4]
     manual_added_margin = pos_data[9]
     position_status = pos_data[10]
@@ -545,14 +545,14 @@ def create_position(symbol, side, leverage, each_position_amount, conn, um_futur
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
 
     max_l = um_futures_client.leverage_brackets(symbol=symbol)[0]['brackets'][0]['initialLeverage']
-    leverage = min(leverage, max_l)
-    response = um_futures_client.change_leverage(symbol=symbol, leverage=leverage)
+    leverage_actual = min(leverage, max_l)
+    response = um_futures_client.change_leverage(symbol=symbol, leverage=leverage_actual)
     if get_margin_type(symbol, um_futures_client) == 'CROSS':
         response = um_futures_client.change_margin_type(symbol=symbol, marginType="ISOLATED")
 
     response = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response['markPrice'])
-    purchase_qty = float((each_position_amount * leverage) / mark_price)
+    purchase_qty = float((each_position_amount * leverage_actual) / mark_price)
     purchase_qty = round_step_size(purchase_qty, exchange_info['stepSize'])
 
     response = um_futures_client.new_order(
@@ -574,7 +574,7 @@ def create_position(symbol, side, leverage, each_position_amount, conn, um_futur
     liquidation_price = float(response[0]['liquidationPrice'])
 
     record_to_insert = (
-        symbol, side, leverage, starting_margin, starting_margin, entry_price, position_quantity, liquidation_price, 0,
+        symbol, side, leverage_actual, starting_margin, starting_margin, entry_price, position_quantity, liquidation_price, 0,
         'OPEN', 0, 0, 0, current_timestamp, current_timestamp)
 
     cursor = conn.cursor()
