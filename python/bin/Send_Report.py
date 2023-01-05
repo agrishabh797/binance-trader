@@ -191,7 +191,7 @@ def main():
                 </tr>
                {}
                 <tr>
-                    <td colspan="4"><b>Total</b></td>
+                    <td colspan="5"><b>Total</b></td>
                     <td style="text-align:right;color:{}">{}</td>
                 </tr>
                </table><br>
