@@ -27,8 +27,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (1.5 * leverage) % of margin is our loss
-    profit = float((1.5 * leverage * current_margin) / 100)
+    # (0.5 * leverage) % of margin is our loss
+    profit = float((0.5 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - profit
@@ -66,8 +66,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (2 * leverage) % of margin is our profit
-    profit = float((2 * leverage * current_margin) / 100)
+    # (1 * leverage) % of margin is our profit
+    profit = float((1 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -680,6 +680,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     new_sell_pos_count = int(total_positions / 2) - sell_pos_count
 
     leverage = random.randint(10, 20)
+    leverage = 20
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
     if total_new_positions == total_positions:
