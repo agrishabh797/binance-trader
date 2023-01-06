@@ -180,7 +180,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
     sql = """select id, symbol, side, leverage, starting_margin, current_margin, 
         entry_price, position_quantity, liquidation_price, manual_added_margin, position_status, closing_pnl,
-        fee_incurred, net_pnl, created_ts, updated_ts  from positions where id = {}""".format(position_id)
+        fee_incurred, net_pnl, created_ts, updated_ts, batch_id  from positions where id = {}""".format(position_id)
 
     cursor = conn.cursor()
     cursor.execute(sql)
@@ -194,6 +194,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     position_status = pos_data[10]
     # created_ts = datetime.strptime(pos_data[14], '%Y-%m-%d %H:%M:%S')
     created_ts = pos_data[14]
+    batch_id = pos_data[16]
 
     logging.info("Checking the status for following Position")
     logging.info("Position id: %s", position_id)
@@ -280,8 +281,14 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
 
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
-
-            create_opposite_position_flag = True
+            fetch_past_losses_sql = """ select count(1) from positions 
+                        where batch_id = {} and symbol = '{}' """.format(batch_id, symbol)
+            cursor = conn.cursor()
+            cursor.execute(fetch_past_losses_sql)
+            count = cursor.fetchone()[0]
+            cursor.close()
+            if count < 5:
+                create_opposite_position_flag = True
 
         else:
             logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
@@ -323,7 +330,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 opposite_side = 'BUY'
             logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
                          symbol)
-            create_position(symbol, opposite_side, leverage, starting_margin + 2.5, conn, um_futures_client)
+            create_position(batch_id, symbol, opposite_side, leverage, starting_margin + 5.0, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
@@ -542,7 +549,7 @@ def get_lot_size(symbol, um_futures_client):
 def get_rounded_quantity(symbol, price, um_futures_client):
     return round_step_size(price, get_lot_size(symbol, um_futures_client))
 
-def create_position(symbol, side, leverage, each_position_amount, conn, um_futures_client):
+def create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client):
 
 
     # leverage = 10
@@ -571,7 +578,7 @@ def create_position(symbol, side, leverage, each_position_amount, conn, um_futur
     new_order_id = response['orderId']
     postgres_insert_query = """INSERT INTO positions (symbol, side, leverage, starting_margin, current_margin,
         entry_price, position_quantity, liquidation_price, manual_added_margin, position_status, closing_pnl,
-        fee_incurred, net_pnl, created_ts, updated_ts) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
+        fee_incurred, net_pnl, created_ts, updated_ts, batch_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
     response = um_futures_client.get_position_risk(symbol=symbol)
     entry_price = float(response[0]['entryPrice'])
     starting_margin = float(response[0]['isolatedWallet'])
@@ -581,7 +588,7 @@ def create_position(symbol, side, leverage, each_position_amount, conn, um_futur
 
     record_to_insert = (
         symbol, side, leverage_actual, starting_margin, starting_margin, entry_price, position_quantity, liquidation_price, 0,
-        'OPEN', 0, 0, 0, current_timestamp, current_timestamp)
+        'OPEN', 0, 0, 0, current_timestamp, current_timestamp, batch_id)
 
     cursor = conn.cursor()
     cursor.execute(postgres_insert_query, record_to_insert)
@@ -658,6 +665,8 @@ def check_and_update_symbols(conn, um_futures_client):
 def create_new_positions(max_positions, conn, um_futures_client):
     # We will dynamically calculate the number of positions we need to create
     # formula - (ceil(total_wallet_amount / 200)) * 2
+    current_time = datetime.now()
+    batch_id = current_time.strftime('%Y%m%d%H%M')
 
     total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
     total_positions = (ceil(total_wallet_amount / 200)) * 2
@@ -667,7 +676,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
 
     # update
-    total_positions = 12
+    total_positions = 6
     cursor = conn.cursor()
 
     cursor.execute(sql_buy)
@@ -688,11 +697,11 @@ def create_new_positions(max_positions, conn, um_futures_client):
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 4.5) / total_positions
-        each_position_amount = float(5)
+        each_position_amount = float(10)
         for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
-            create_position(symbol, side, leverage, each_position_amount, conn, um_futures_client)
+            create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client)
             # elif wallet_utilization >= 30:
             #    break
 
