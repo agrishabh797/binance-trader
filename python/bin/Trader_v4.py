@@ -28,7 +28,7 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     total_position_amount = entry_price * position_quantity
 
     # (0.5 * leverage) % of margin is our loss
-    profit = float((0.5 * leverage * current_margin) / 100)
+    profit = float((0.75 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - profit
@@ -287,7 +287,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             cursor.execute(fetch_past_losses_sql)
             count = cursor.fetchone()[0]
             cursor.close()
-            if count < 3:
+            if count < 2:
                 create_opposite_position_flag = True
 
         else:
