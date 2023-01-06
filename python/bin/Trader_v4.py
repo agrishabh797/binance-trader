@@ -287,7 +287,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             cursor.execute(fetch_past_losses_sql)
             count = cursor.fetchone()[0]
             cursor.close()
-            if count < 5:
+            if count < 3:
                 create_opposite_position_flag = True
 
         else:
@@ -330,7 +330,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 opposite_side = 'BUY'
             logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
                          symbol)
-            create_position(batch_id, symbol, opposite_side, leverage, starting_margin + 5.0, conn, um_futures_client)
+            create_position(batch_id, symbol, opposite_side, leverage, starting_margin * 2, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
@@ -696,8 +696,8 @@ def create_new_positions(max_positions, conn, um_futures_client):
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-        each_position_amount = float(total_wallet_amount / 4.5) / total_positions
-        each_position_amount = float(10)
+        each_position_amount = float(total_wallet_amount / 4) / total_positions
+        # each_position_amount = float(10)
         for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
