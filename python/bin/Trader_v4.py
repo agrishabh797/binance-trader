@@ -189,7 +189,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     symbol = pos_data[1]
     side = pos_data[2]
     leverage = int(pos_data[3])
-    starting_margin = pos_data[4]
+    starting_margin = float(pos_data[4])
     manual_added_margin = pos_data[9]
     position_status = pos_data[10]
     # created_ts = datetime.strptime(pos_data[14], '%Y-%m-%d %H:%M:%S')
@@ -323,7 +323,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 opposite_side = 'BUY'
             logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
                          symbol)
-            create_position(symbol, opposite_side, leverage, 5, conn, um_futures_client)
+            create_position(symbol, opposite_side, leverage, starting_margin + 2.5, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
