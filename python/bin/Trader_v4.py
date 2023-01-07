@@ -290,10 +290,13 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             # i.e if this was BUY lets create SELL or vice versa.
             fetch_last_pnl_sql = """ select coalesce(net_pnl, 0) from positions 
                         where batch_id = {} and symbol = '{}' and updated_ts = (select max(updated_ts) from positions where 
-                        batch_id = {} and symbol = '{}')""".format(batch_id, symbol, batch_id, symbol)
+                        batch_id = {} and symbol = '{}' and position_status = 'CLOSED')""".format(batch_id, symbol, batch_id, symbol)
             cursor = conn.cursor()
             cursor.execute(fetch_last_pnl_sql)
-            prev_pnl = cursor.fetchone()[0]
+            prev_pnl = 0
+            obj = cursor.fetchone()
+            if obj:
+                prev_pnl = obj[0]
             print('prev_pnl: ', prev_pnl)
             cursor.close()
             if prev_pnl >= 0:
