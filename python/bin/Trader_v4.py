@@ -689,9 +689,9 @@ def create_new_positions(max_positions, conn, um_futures_client):
     current_time = datetime.now()
     batch_id = current_time.strftime('%Y%m%d%H%M')
 
-    total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-    total_positions = (ceil(total_wallet_amount / 200)) * 2
-    total_positions = min(max_positions, total_positions)
+    # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+    # total_positions = (ceil(total_wallet_amount / 200)) * 2
+    # total_positions = min(max_positions, total_positions)
 
     # sql_buy = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'BUY'"
     # sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
