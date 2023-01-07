@@ -17,6 +17,8 @@ import random
 
 
 text_position = ''
+total_positions = 6
+
 
 def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client):
     # Create Stop Loss Order
@@ -246,8 +248,10 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     hours_diff = (current_time - created_ts).total_seconds() / 3600
 
     create_opposite_position_flag = False
+    create_same_position_flag = False
 
     global text_position
+    global total_positions
     if current_margin == 0.0:
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
         logging.info("Current Margin is 0.0. Checking if closed with Profit, Loss or Manually.")
@@ -269,6 +273,9 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             if loss_order_id:
                 close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
             closing_order_id = profit_src_order_id
+
+            create_same_position_flag = True
+
         elif response_loss['status'] == 'FILLED':
             logging.info("Loss order id %s is filled. Position Closed on its own with Loss.", loss_src_order_id)
             logging.info("Cancelling the profit order.")
@@ -281,13 +288,18 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
 
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
-            fetch_past_losses_sql = """ select count(1) from positions 
-                        where batch_id = {} and symbol = '{}' """.format(batch_id, symbol)
+            fetch_last_pnl_sql = """ select coalesce(net_pnl, 0) from positions 
+                        where batch_id = {} and symbol = '{}' and updated_ts = (select max(updated_ts) from positions where 
+                        batch_id = {} and symbol = '{}')""".format(batch_id, symbol, batch_id, symbol)
             cursor = conn.cursor()
-            cursor.execute(fetch_past_losses_sql)
-            count = cursor.fetchone()[0]
+            cursor.execute(fetch_last_pnl_sql)
+            obj = cursor.fetchone()
+            prev_pnl = 0
+            if obj is not None:
+                prev_pnl = obj[0]
+            print('prev_pnl: ', prev_pnl)
             cursor.close()
-            if count < 2:
+            if prev_pnl >= 0:
                 create_opposite_position_flag = True
 
         else:
@@ -331,6 +343,14 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
                          symbol)
             create_position(batch_id, symbol, opposite_side, leverage, starting_margin * 2, conn, um_futures_client)
+
+        if create_same_position_flag:
+            logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
+                         symbol)
+            total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+            new_position_amount = float(total_wallet_amount / 2.5) / total_positions
+
+            create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
@@ -429,6 +449,7 @@ def decide_side(symbol, um_futures_client):
     # print(close_for_range)
     # print(side)
     return side
+
 
 def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client):
     sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status in ('OPEN', 'ALL_IN') or (DATE_PART('day', current_timestamp::timestamp - created_ts::timestamp) = 1 and position_status = 'CLOSED'))"
@@ -672,31 +693,36 @@ def create_new_positions(max_positions, conn, um_futures_client):
     total_positions = (ceil(total_wallet_amount / 200)) * 2
     total_positions = min(max_positions, total_positions)
 
-    sql_buy = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'BUY'"
-    sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
-
+    # sql_buy = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'BUY'"
+    # sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
+    sql_open_pos = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN'"
     # update
-    total_positions = 6
+    global total_positions
     cursor = conn.cursor()
+    cursor.execute(sql_open_pos)
+    open_pos_count = cursor.fetchone()[0]
 
-    cursor.execute(sql_buy)
-    buy_pos_count = cursor.fetchone()[0]
+    # cursor.execute(sql_buy)
+    # buy_pos_count = cursor.fetchone()[0]
 
-    cursor.execute(sql_sell)
-    sell_pos_count = cursor.fetchone()[0]
+    # cursor.execute(sql_sell)
+    # sell_pos_count = cursor.fetchone()[0]
 
-    new_buy_pos_count = int(total_positions / 2) - buy_pos_count
-    new_sell_pos_count = int(total_positions / 2) - sell_pos_count
+    # new_buy_pos_count = int(total_positions / 2) - buy_pos_count
+    # new_sell_pos_count = int(total_positions / 2) - sell_pos_count
+    close_pos_count = total_positions - open_pos_count
+    new_buy_pos_count = int(close_pos_count / 2)
+    new_sell_pos_count = close_pos_count - new_buy_pos_count
 
     leverage = random.randint(10, 20)
     leverage = 20
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
-    if total_new_positions == total_positions:
+    if total_new_positions > total_positions:
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-        each_position_amount = float(total_wallet_amount / 4) / total_positions
+        each_position_amount = float(total_wallet_amount / 2.5) / total_positions
         # each_position_amount = float(10)
         for symbol, side in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
@@ -718,10 +744,12 @@ def send_sms(text_message, config):
         to='+917709452797'
     )
 
+
 def time_is_between(time, time_range):
     if time_range[1] < time_range[0]:
         return time >= time_range[0] or time <= time_range[1]
     return time_range[0] <= time <= time_range[1]
+
 
 def main():
     # Set the config parameters using the config file
@@ -745,7 +773,7 @@ def main():
     if not os.path.exists(log_directory):
         os.makedirs(log_directory)
 
-    log_file_name = log_directory + '/Trader_' + '_' + current_time.strftime('%Y%m%d%H%M%S') + '.log'
+    log_file_name = log_directory + '/Trader_' + current_time.strftime('%Y%m%d%H%M%S') + '.log'
     config_logging(logging, logging.INFO, log_file=log_file_name)
     logging.info("Trader Script Started at %s", current_timestamp)
 
@@ -785,6 +813,7 @@ def main():
 
     conn.commit()
     conn.close()
+
 
 if __name__ == "__main__":
     main()
