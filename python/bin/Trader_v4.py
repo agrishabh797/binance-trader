@@ -293,10 +293,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                         batch_id = {} and symbol = '{}')""".format(batch_id, symbol, batch_id, symbol)
             cursor = conn.cursor()
             cursor.execute(fetch_last_pnl_sql)
-            obj = cursor.fetchone()
-            prev_pnl = 0
-            if obj is not None:
-                prev_pnl = obj[0]
+            prev_pnl = cursor.fetchone()[0]
             print('prev_pnl: ', prev_pnl)
             cursor.close()
             if prev_pnl >= 0:
