@@ -704,6 +704,9 @@ def create_new_positions(max_positions, conn, um_futures_client):
     cursor.execute(sql_open_pos)
     open_pos_count = cursor.fetchone()[0]
 
+    if open_pos_count % 2 == 1:
+        open_pos_count = open_pos_count - 1
+
     # cursor.execute(sql_buy)
     # buy_pos_count = cursor.fetchone()[0]
 
