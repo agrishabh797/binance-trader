@@ -30,7 +30,7 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     total_position_amount = entry_price * position_quantity
 
     # (0.5 * leverage) % of margin is our loss
-    profit = float((0.75 * leverage * current_margin) / 100)
+    profit = float((0.5 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - profit
@@ -273,8 +273,15 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             if loss_order_id:
                 close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
             closing_order_id = profit_src_order_id
-
-            create_same_position_flag = True
+            fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)) from positions 
+                                    where batch_id = {} and symbol = '{}')""".format(batch_id, symbol)
+            cursor = conn.cursor()
+            cursor.execute(fetch_last_pnl_sql)
+            sum_pnl = cursor.fetchone()[0]
+            print('sum_pnl: ', sum_pnl)
+            cursor.close()
+            if sum_pnl >= 0:
+                create_same_position_flag = True
 
         elif response_loss['status'] == 'FILLED':
             logging.info("Loss order id %s is filled. Position Closed on its own with Loss.", loss_src_order_id)
@@ -288,18 +295,14 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
 
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
-            fetch_last_pnl_sql = """ select coalesce(net_pnl, 0) from positions 
-                        where batch_id = {} and symbol = '{}' and updated_ts = (select max(updated_ts) from positions where 
-                        batch_id = {} and symbol = '{}' and position_status = 'CLOSED')""".format(batch_id, symbol, batch_id, symbol)
+            fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)) from positions 
+                        where batch_id = {} and symbol = '{}')""".format(batch_id, symbol)
             cursor = conn.cursor()
             cursor.execute(fetch_last_pnl_sql)
-            prev_pnl = 0
-            obj = cursor.fetchone()
-            if obj:
-                prev_pnl = obj[0]
-            print('prev_pnl: ', prev_pnl)
+            sum_pnl = cursor.fetchone()[0]
+            print('sum_pnl: ', sum_pnl)
             cursor.close()
-            if prev_pnl >= 0:
+            if sum_pnl >= 0:
                 create_opposite_position_flag = True
 
         else:
@@ -344,7 +347,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                          symbol)
             total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
             new_position_amount = float(total_wallet_amount / 3) / total_positions
-            create_position(batch_id, symbol, opposite_side, leverage, new_position_amount * 2, conn, um_futures_client)
+            create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
 
         if create_same_position_flag:
             logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
@@ -352,7 +355,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
             new_position_amount = float(total_wallet_amount / 3) / total_positions
 
-            create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
+            create_position(batch_id, symbol, side, leverage, new_position_amount * 2, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
@@ -705,7 +708,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     open_pos_count = cursor.fetchone()[0]
 
     if open_pos_count % 2 == 1:
-        open_pos_count = open_pos_count - 1
+        open_pos_count = open_pos_count + 1
 
     # cursor.execute(sql_buy)
     # buy_pos_count = cursor.fetchone()[0]
