@@ -68,8 +68,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (1 * leverage) % of margin is our profit
-    profit = float((1 * leverage * current_margin) / 100)
+    # (0.6 * leverage) % of margin is our profit
+    profit = float((0.6 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
