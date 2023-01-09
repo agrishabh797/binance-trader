@@ -330,27 +330,34 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         logging.info("FEE    : %s", str(total_fee))
         logging.info("NET_PNL: %s", str(net_pnl))
 
+        fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)), count(1) from positions 
+                                                        where batch_id = {} and symbol = '{}'""".format(batch_id,
+                                                                                                        symbol)
+        cursor = conn.cursor()
+        cursor.execute(fetch_last_pnl_sql)
+        obj = cursor.fetchone()
+        sum_pnl = obj[0]
+        count = obj[1]
+        logging.info('sum_pnl: %s', sum_pnl)
+        logging.info('count: %s', count)
+        cursor.close()
+
         if create_opposite_position_flag:
             opposite_side = ''
             if side == 'BUY':
                 opposite_side = 'SELL'
             elif side == 'SELL':
                 opposite_side = 'BUY'
-            logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
-                         symbol)
-            total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-            new_position_amount = float(total_wallet_amount / 2.5) / total_positions
-            new_position_amount = float(5)
-            create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
+
+            if count == 1 or sum_pnl > 0:
+                logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
+                             symbol)
+                total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+                new_position_amount = float(total_wallet_amount / 2.5) / total_positions
+                new_position_amount = float(5)
+                create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
 
         if create_same_position_flag:
-            fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)) from positions 
-                                                where batch_id = {} and symbol = '{}'""".format(batch_id, symbol)
-            cursor = conn.cursor()
-            cursor.execute(fetch_last_pnl_sql)
-            sum_pnl = cursor.fetchone()[0]
-            logging.info('sum_pnl: %s', sum_pnl)
-            cursor.close()
             if sum_pnl >= 0:
                 logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
                              symbol)
