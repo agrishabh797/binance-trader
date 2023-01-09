@@ -273,15 +273,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             if loss_order_id:
                 close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
             closing_order_id = profit_src_order_id
-            fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)) from positions 
-                                    where batch_id = {} and symbol = '{}'""".format(batch_id, symbol)
-            cursor = conn.cursor()
-            cursor.execute(fetch_last_pnl_sql)
-            sum_pnl = cursor.fetchone()[0]
-            logging.info('sum_pnl: %s', sum_pnl)
-            cursor.close()
-            if sum_pnl >= 0:
-                create_same_position_flag = True
+
+            create_same_position_flag = True
 
         elif response_loss['status'] == 'FILLED':
             logging.info("Loss order id %s is filled. Position Closed on its own with Loss.", loss_src_order_id)
@@ -350,12 +343,20 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
 
         if create_same_position_flag:
-            logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
-                         symbol)
-            total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-            new_position_amount = float(total_wallet_amount / 2.5) / total_positions
+            fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)) from positions 
+                                                where batch_id = {} and symbol = '{}'""".format(batch_id, symbol)
+            cursor = conn.cursor()
+            cursor.execute(fetch_last_pnl_sql)
+            sum_pnl = cursor.fetchone()[0]
+            logging.info('sum_pnl: %s', sum_pnl)
+            cursor.close()
+            if sum_pnl >= 0:
+                logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
+                             symbol)
+                total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+                new_position_amount = float(total_wallet_amount / 2.5) / total_positions
 
-            create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
+                create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
