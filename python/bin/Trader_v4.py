@@ -288,15 +288,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
 
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
-            fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)) from positions 
-                        where batch_id = {} and symbol = '{}'""".format(batch_id, symbol)
-            cursor = conn.cursor()
-            cursor.execute(fetch_last_pnl_sql)
-            sum_pnl = cursor.fetchone()[0]
-            logging.info('sum_pnl: %s', sum_pnl)
-            cursor.close()
-            if sum_pnl >= 0:
-                create_opposite_position_flag = True
+
+            create_opposite_position_flag = True
 
         else:
             logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
