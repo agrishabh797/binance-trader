@@ -347,8 +347,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             if count == 1:
                 logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
                              symbol)
-                total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-                new_position_amount = float(total_wallet_amount / 2.5) / total_positions
+                # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+                # new_position_amount = float(total_wallet_amount / 2.5) / total_positions
                 new_position_amount = float(5)
                 create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
 
@@ -356,8 +356,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             if sum_pnl >= 0:
                 logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
                              symbol)
-                total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-                new_position_amount = float(total_wallet_amount / 2.5) / total_positions
+                # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+                # new_position_amount = float(total_wallet_amount / 2.5) / total_positions
                 new_position_amount = float(5)
                 create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
 
@@ -737,7 +737,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
         each_position_amount = float(5)
         for symbol, side in new_positions_symbols.items():
-            wallet_utilization = get_wallet_utilization(conn, um_futures_client)
+            # wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
             create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client)
             # elif wallet_utilization >= 30:
@@ -817,8 +817,8 @@ def main():
 
     logging.info("Checking if we can create New Positions: ")
 
-    wallet_utilization = get_wallet_utilization(conn, um_futures_client)
-    logging.info("Wallet Utilization: %s", str(wallet_utilization))
+    # wallet_utilization = get_wallet_utilization(conn, um_futures_client)
+    # logging.info("Wallet Utilization: %s", str(wallet_utilization))
     logging.info("Checking if new positions need to be created")
     max_positions = 20
     create_new_positions(max_positions, conn, um_futures_client)
