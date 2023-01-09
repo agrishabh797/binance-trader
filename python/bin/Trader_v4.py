@@ -342,7 +342,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             elif side == 'SELL':
                 opposite_side = 'BUY'
 
-            if count == 1 or sum_pnl > 0:
+            if count == 1:
                 logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
                              symbol)
                 total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
