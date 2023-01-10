@@ -80,11 +80,11 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
-        limit_position_amount = total_position_amount + profit
+        limit_position_amount = total_position_amount + limit
         close_side = 'SELL'
     elif side == 'SELL':
         profit_position_amount = total_position_amount - profit
-        limit_position_amount = total_position_amount - profit
+        limit_position_amount = total_position_amount - limit
         close_side = 'BUY'
 
     profit_closing_price = float(profit_position_amount / position_quantity)
