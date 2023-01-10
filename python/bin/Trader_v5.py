@@ -359,7 +359,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                              symbol)
                 # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
                 # new_position_amount = float(total_wallet_amount / 2.5) / total_positions
-                new_position_amount = float(7)
+                new_position_amount = float(5)
                 create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
 
         if create_same_position_flag:
@@ -368,7 +368,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                              symbol)
                 # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
                 # new_position_amount = float(total_wallet_amount / 2.5) / total_positions
-                new_position_amount = float(7)
+                new_position_amount = float(5)
                 create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
@@ -745,7 +745,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
-        each_position_amount = float(7)
+        each_position_amount = float(5)
         for symbol, side in new_positions_symbols.items():
             # wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
