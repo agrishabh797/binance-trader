@@ -363,13 +363,13 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
 
         if create_same_position_flag:
-            if sum_pnl >= 0:
-                logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
-                             symbol)
-                # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-                # new_position_amount = float(total_wallet_amount / 2.5) / total_positions
-                new_position_amount = float(5)
-                create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
+            # if sum_pnl >= 0:
+            logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
+                         symbol)
+            # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+            # new_position_amount = float(total_wallet_amount / 2.5) / total_positions
+            new_position_amount = float(5)
+            create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
