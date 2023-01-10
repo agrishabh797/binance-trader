@@ -30,18 +30,23 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     total_position_amount = entry_price * position_quantity
 
     # (10) % of margin is our loss
-    profit = float((10 * current_margin) / 100)
+    loss = float((10 * current_margin) / 100)
+    limit = float((9 * current_margin) / 100)
 
     if side == 'BUY':
-        loss_position_amount = total_position_amount - profit
+        loss_position_amount = total_position_amount - loss
+        limit_position_amount = total_position_amount - limit
         close_side = 'SELL'
     elif side == 'SELL':
-        loss_position_amount = total_position_amount + profit
+        loss_position_amount = total_position_amount + loss
+        limit_position_amount = total_position_amount + limit
         close_side = 'BUY'
 
     loss_closing_price = float(loss_position_amount / position_quantity)
     loss_closing_price = round_step_size(loss_closing_price, exchange_info['tickSize'])
-    logging.info("Symbol: %s, side: %s, Loss Closing Price: %s", symbol, close_side, loss_closing_price)
+    limit_closing_price = float(limit_position_amount / position_quantity)
+    limit_closing_price = round_step_size(limit_closing_price, exchange_info['tickSize'])
+    logging.info("Symbol: %s, side: %s, Loss Closing Price: %s, Limit Closing Price: %s", symbol, close_side, loss_closing_price, limit_closing_price)
     response = um_futures_client.new_order(
         symbol=symbol,
         side=close_side,
@@ -49,7 +54,7 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
         stopPrice=loss_closing_price,
         workingType='MARK_PRICE',
         quantity=position_quantity,
-        price=loss_closing_price
+        price=limit_closing_price
     )
 
     logging.info("Loss order response from server.")
@@ -71,17 +76,22 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
 
     # (20) % of margin is our profit
     profit = float((20 * current_margin) / 100)
+    limit = float((18 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
+        limit_position_amount = total_position_amount + profit
         close_side = 'SELL'
     elif side == 'SELL':
         profit_position_amount = total_position_amount - profit
+        limit_position_amount = total_position_amount - profit
         close_side = 'BUY'
 
     profit_closing_price = float(profit_position_amount / position_quantity)
     profit_closing_price = round_step_size(profit_closing_price, exchange_info['tickSize'])
-    logging.info("Symbol: %s, side: %s, Profit Closing Price: %s", symbol, close_side, profit_closing_price)
+    limit_closing_price = float(limit_position_amount / position_quantity)
+    limit_closing_price = round_step_size(limit_closing_price, exchange_info['tickSize'])
+    logging.info("Symbol: %s, side: %s, Profit Closing Price: %s, Limit Closing Price: %s", symbol, close_side, profit_closing_price, limit_closing_price)
     response = um_futures_client.new_order(
         symbol=symbol,
         side=close_side,
@@ -89,7 +99,7 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
         stopPrice=profit_closing_price,
         workingType='MARK_PRICE',
         quantity=position_quantity,
-        price=profit_closing_price
+        price=limit_closing_price
     )
 
     logging.info("Profit order response from server.")
@@ -720,17 +730,17 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # cursor.execute(sql_sell)
     # sell_pos_count = cursor.fetchone()[0]
 
-    # new_buy_pos_count = int(total_positions / 2) - buy_pos_count
-    # new_sell_pos_count = int(total_positions / 2) - sell_pos_count
-    close_pos_count = total_positions - open_pos_count
-    new_buy_pos_count = int(close_pos_count / 2)
-    new_sell_pos_count = close_pos_count - new_buy_pos_count
+    new_buy_pos_count = int(total_positions / 2)
+    new_sell_pos_count = int(total_positions / 2)
+    # close_pos_count = total_positions - open_pos_count
+    # new_buy_pos_count = int(close_pos_count / 2)
+    # new_sell_pos_count = close_pos_count - new_buy_pos_count
 
     leverage = random.randint(10, 20)
     leverage = 20
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
-    if total_new_positions == total_positions:
+    if open_pos_count <= 4:
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
