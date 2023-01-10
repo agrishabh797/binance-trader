@@ -29,9 +29,9 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (10) % of margin is our loss
-    loss = float((10 * current_margin) / 100)
-    limit = float((9 * current_margin) / 100)
+    # (40) % of margin is our loss
+    loss = float((40 * current_margin) / 100)
+    limit = float((37 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -74,9 +74,9 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (15) % of margin is our profit
-    profit = float((15 * current_margin) / 100)
-    limit = float((13.5 * current_margin) / 100)
+    # (20) % of margin is our profit
+    profit = float((20 * current_margin) / 100)
+    limit = float((18 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -301,7 +301,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
 
-            # create_opposite_position_flag = True
+            create_opposite_position_flag = True
 
         else:
             logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
@@ -558,6 +558,7 @@ def get_exchange_info(symbol, um_futures_client):
                     info['stepSize'] = float(symbol_filter['stepSize'])
     return info
 
+
 def round_step_size(quantity, step_size):
     quantity = Decimal(str(quantity))
     return float(quantity - quantity % Decimal(str(step_size)))
@@ -586,11 +587,12 @@ def get_lot_size(symbol, um_futures_client):
                 if symbol_filter['filterType'] == 'LOT_SIZE':
                     return float(symbol_filter['stepSize'])
 
+
 def get_rounded_quantity(symbol, price, um_futures_client):
     return round_step_size(price, get_lot_size(symbol, um_futures_client))
 
-def create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client):
 
+def create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client):
 
     # leverage = 10
     exchange_info = get_exchange_info(symbol, um_futures_client)
