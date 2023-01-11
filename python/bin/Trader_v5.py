@@ -17,7 +17,7 @@ import random
 
 
 text_position = ''
-total_positions = 8
+total_positions = 12
 
 
 def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat):
@@ -752,7 +752,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     leverage = 20
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
-    if open_pos_count <= 2:
+    if open_pos_count <= 6:
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
