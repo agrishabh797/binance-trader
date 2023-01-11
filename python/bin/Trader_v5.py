@@ -20,7 +20,7 @@ text_position = ''
 total_positions = 8
 
 
-def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client):
+def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat):
     # Create Stop Loss Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
     response = um_futures_client.get_position_risk(symbol=symbol)
@@ -29,9 +29,14 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (40) % of margin is our loss
-    loss = float((20 * current_margin) / 100)
-    limit = float((18 * current_margin) / 100)
+    if is_repeat:
+        # (10) % of margin is our loss
+        loss = float((10 * current_margin) / 100)
+        limit = float((9 * current_margin) / 100)
+    elif not is_repeat:
+        # (40) % of margin is our loss
+        loss = float((40 * current_margin) / 100)
+        limit = float((37 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -64,7 +69,7 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
-def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client):
+def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat):
 
     # Create Take Profit Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
@@ -74,9 +79,14 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (20) % of margin is our profit
-    profit = float((20 * current_margin) / 100)
-    limit = float((18 * current_margin) / 100)
+    if is_repeat:
+        # (10) % of margin is our profit
+        profit = float((10 * current_margin) / 100)
+        limit = float((9 * current_margin) / 100)
+    elif not is_repeat:
+        # (20) % of margin is our loss
+        profit = float((20 * current_margin) / 100)
+        limit = float((18 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -301,7 +311,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
 
-            # create_opposite_position_flag = True
+            create_opposite_position_flag = True
 
         else:
             logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
@@ -360,7 +370,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
                 # new_position_amount = float(total_wallet_amount / 2.5) / total_positions
                 new_position_amount = float(5)
-                create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
+                create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client, is_repeat=True)
 
         if create_same_position_flag:
             # if sum_pnl >= 0:
@@ -369,7 +379,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
             # new_position_amount = float(total_wallet_amount / 2.5) / total_positions
             new_position_amount = float(5)
-            create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
+            create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client, is_repeat=True)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
@@ -592,7 +602,7 @@ def get_rounded_quantity(symbol, price, um_futures_client):
     return round_step_size(price, get_lot_size(symbol, um_futures_client))
 
 
-def create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client):
+def create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client, is_repeat=False):
 
     # leverage = 10
     exchange_info = get_exchange_info(symbol, um_futures_client)
@@ -644,10 +654,10 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
     # Create Take Profit Order
-    create_take_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client)
+    create_take_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat)
 
     # Create Stop Loss order
-    create_stop_loss_order(symbol, position_id, starting_margin, side, conn, um_futures_client)
+    create_stop_loss_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat)
 
     logging.info("Created following position")
     logging.info("Position Id: %s", str(position_id))
