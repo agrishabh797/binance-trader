@@ -30,8 +30,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     total_position_amount = entry_price * position_quantity
 
     # (40) % of margin is our loss
-    loss = float((40 * current_margin) / 100)
-    limit = float((37 * current_margin) / 100)
+    loss = float((20 * current_margin) / 100)
+    limit = float((18 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -301,7 +301,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
 
-            create_opposite_position_flag = True
+            # create_opposite_position_flag = True
 
         else:
             logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
