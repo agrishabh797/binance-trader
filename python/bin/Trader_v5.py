@@ -32,34 +32,34 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     if is_repeat:
         # (10) % of margin is our loss
         loss = float((10 * current_margin) / 100)
-        limit = float((9 * current_margin) / 100)
+        stop = float((8 * current_margin) / 100)
     elif not is_repeat:
         # (40) % of margin is our loss
         loss = float((40 * current_margin) / 100)
-        limit = float((37 * current_margin) / 100)
+        stop = float((35 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
-        limit_position_amount = total_position_amount - limit
+        stop_position_amount = total_position_amount - stop
         close_side = 'SELL'
     elif side == 'SELL':
         loss_position_amount = total_position_amount + loss
-        limit_position_amount = total_position_amount + limit
+        stop_position_amount = total_position_amount + stop
         close_side = 'BUY'
 
     loss_closing_price = float(loss_position_amount / position_quantity)
     loss_closing_price = round_step_size(loss_closing_price, exchange_info['tickSize'])
-    limit_closing_price = float(limit_position_amount / position_quantity)
-    limit_closing_price = round_step_size(limit_closing_price, exchange_info['tickSize'])
-    logging.info("Symbol: %s, side: %s, Loss Closing Price: %s, Limit Closing Price: %s", symbol, close_side, loss_closing_price, limit_closing_price)
+    stop_price = float(stop_position_amount / position_quantity)
+    stop_price = round_step_size(stop_price, exchange_info['tickSize'])
+    logging.info("Symbol: %s, side: %s, Loss Closing Price: %s, Limit Closing Price: %s", symbol, close_side, loss_closing_price, stop_price)
     response = um_futures_client.new_order(
         symbol=symbol,
         side=close_side,
         type="STOP",
-        stopPrice=loss_closing_price,
+        stopPrice=stop_price,
         workingType='MARK_PRICE',
         quantity=position_quantity,
-        price=limit_closing_price
+        price=loss_closing_price
     )
 
     logging.info("Loss order response from server.")
@@ -82,34 +82,34 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     if is_repeat:
         # (10) % of margin is our profit
         profit = float((10 * current_margin) / 100)
-        limit = float((9 * current_margin) / 100)
+        stop = float((8 * current_margin) / 100)
     elif not is_repeat:
         # (20) % of margin is our loss
         profit = float((20 * current_margin) / 100)
-        limit = float((18 * current_margin) / 100)
+        stop = float((16 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
-        limit_position_amount = total_position_amount + limit
+        stop_position_amount = total_position_amount + stop
         close_side = 'SELL'
     elif side == 'SELL':
         profit_position_amount = total_position_amount - profit
-        limit_position_amount = total_position_amount - limit
+        stop_position_amount = total_position_amount - stop
         close_side = 'BUY'
 
     profit_closing_price = float(profit_position_amount / position_quantity)
     profit_closing_price = round_step_size(profit_closing_price, exchange_info['tickSize'])
-    limit_closing_price = float(limit_position_amount / position_quantity)
-    limit_closing_price = round_step_size(limit_closing_price, exchange_info['tickSize'])
-    logging.info("Symbol: %s, side: %s, Profit Closing Price: %s, Limit Closing Price: %s", symbol, close_side, profit_closing_price, limit_closing_price)
+    stop_price = float(stop_position_amount / position_quantity)
+    stop_price = round_step_size(stop_price, exchange_info['tickSize'])
+    logging.info("Symbol: %s, side: %s, Profit Closing Price: %s, Limit Closing Price: %s", symbol, close_side, profit_closing_price, stop_price)
     response = um_futures_client.new_order(
         symbol=symbol,
         side=close_side,
         type="TAKE_PROFIT",
-        stopPrice=profit_closing_price,
+        stopPrice=stop_price,
         workingType='MARK_PRICE',
         quantity=position_quantity,
-        price=limit_closing_price
+        price=profit_closing_price
     )
 
     logging.info("Profit order response from server.")
