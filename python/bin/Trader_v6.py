@@ -349,25 +349,24 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
 
         new_position_amount = float(starting_margin + net_pnl)
 
-        if count < 4:
+        if create_opposite_position_flag:
+            opposite_side = ''
+            if side == 'BUY':
+                opposite_side = 'SELL'
+            elif side == 'SELL':
+                opposite_side = 'BUY'
 
-            if create_opposite_position_flag:
-                opposite_side = ''
-                if side == 'BUY':
-                    opposite_side = 'SELL'
-                elif side == 'SELL':
-                    opposite_side = 'BUY'
-
+            if count < 4:
                 logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
                              symbol)
 
                 create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
 
-            if create_same_position_flag:
-                logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
-                             symbol)
+        if create_same_position_flag:
+            logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
+                         symbol)
 
-                create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
+            create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
