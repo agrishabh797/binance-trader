@@ -29,9 +29,9 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (.75 * leverage) % of margin is our loss
-    loss = float((0.75 * leverage * current_margin) / 100)
-    stop = float((0.65 * leverage * current_margin) / 100)
+    # (.5 * leverage) % of margin is our loss
+    loss = float((0.5 * leverage * current_margin) / 100)
+    stop = float((0.4 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -348,7 +348,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         cursor.close()
 
         new_position_amount = float(starting_margin + net_pnl)
-        if count < 4:
+        if count < 2:
 
             if create_opposite_position_flag:
                 opposite_side = ''
