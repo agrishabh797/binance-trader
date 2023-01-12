@@ -29,9 +29,9 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (15) % of margin is our loss
-    loss = float((15 * current_margin) / 100)
-    stop = float((13 * current_margin) / 100)
+    # (.75 * leverage) % of margin is our loss
+    loss = float((0.75 * leverage * current_margin) / 100)
+    stop = float((0.65 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -74,9 +74,9 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     position_quantity = abs(float(response[0]['positionAmt']))
     total_position_amount = entry_price * position_quantity
 
-    # (20) % of margin is our loss
-    profit = float((20 * current_margin) / 100)
-    stop = float((16 * current_margin) / 100)
+    # (1 * leverage) % of margin is our loss
+    profit = float((1 * leverage * current_margin) / 100)
+    stop = float((0.8 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -348,25 +348,25 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         cursor.close()
 
         new_position_amount = float(starting_margin + net_pnl)
+        if count < 4:
 
-        if create_opposite_position_flag:
-            opposite_side = ''
-            if side == 'BUY':
-                opposite_side = 'SELL'
-            elif side == 'SELL':
-                opposite_side = 'BUY'
+            if create_opposite_position_flag:
+                opposite_side = ''
+                if side == 'BUY':
+                    opposite_side = 'SELL'
+                elif side == 'SELL':
+                    opposite_side = 'BUY'
 
-            if count < 4:
                 logging.info("Creating a %s position for this symbol %s in a hope to recover our loss", opposite_side,
                              symbol)
 
                 create_position(batch_id, symbol, opposite_side, leverage, new_position_amount, conn, um_futures_client)
 
-        if create_same_position_flag:
-            logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
-                         symbol)
+            if create_same_position_flag:
+                logging.info("Creating a %s position for this symbol %s in a hope to continue our profit", side,
+                             symbol)
 
-            create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
+                create_position(batch_id, symbol, side, leverage, new_position_amount, conn, um_futures_client)
 
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 2)) + "\n"
 
