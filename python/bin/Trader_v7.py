@@ -31,7 +31,7 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
 
     # (10) % of margin is our loss
     loss = float((10 * current_margin) / 100)
-    stop = float((9 * leverage * current_margin) / 100)
+    stop = float((9 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
