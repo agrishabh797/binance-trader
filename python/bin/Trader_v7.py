@@ -706,19 +706,21 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # formula - (ceil(total_wallet_amount / 200)) * 2
     current_time = datetime.now()
     batch_id = current_time.strftime('%Y%m%d%H%M')
-
+    max_open_positions = 8
     # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
     # total_positions = (ceil(total_wallet_amount / 200)) * 2
     # total_positions = min(max_positions, total_positions)
 
     # sql_buy = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'BUY'"
     # sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
-    sql_open_pos = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN'"
+    sql_open_pos = "select coalesce(count(current_margin), 0), date_part('day', current_timestamp - min(updated_ts)) from positions where position_status = 'OPEN';"
     # update
     global total_positions
     cursor = conn.cursor()
     cursor.execute(sql_open_pos)
-    open_pos_count = cursor.fetchone()[0]
+    obj = cursor.fetchone()
+    open_pos_count = obj[0]
+    day_diff = obj[1]
 
     if open_pos_count % 2 == 1:
         open_pos_count = open_pos_count + 1
@@ -739,7 +741,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     leverage = 5
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
-    if open_pos_count == 0:
+    if open_pos_count == 0 or (open_pos_count > 0 and open_pos_count + total_positions <= max_open_positions and day_diff >= 1):
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
