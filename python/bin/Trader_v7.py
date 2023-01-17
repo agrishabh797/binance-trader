@@ -742,7 +742,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     leverage = 5
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
-    if open_pos_count == 0 or (open_pos_count > 0 and open_pos_count + total_positions <= max_open_positions and hour_diff >= 12):
+    if open_pos_count == 0 or (open_pos_count > 0 and (open_pos_count + total_positions <= max_open_positions) and hour_diff >= 12):
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
