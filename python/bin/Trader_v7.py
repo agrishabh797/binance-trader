@@ -713,14 +713,15 @@ def create_new_positions(max_positions, conn, um_futures_client):
 
     # sql_buy = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'BUY'"
     # sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
-    sql_open_pos = "select coalesce(count(current_margin), 0), date_part('day', current_timestamp - min(updated_ts)) from positions where position_status = 'OPEN';"
+    sql_open_pos = "select coalesce(count(current_margin), 0), DATEDIFF('hour', min(updated_ts)::timestamp, current_timestamp::timestamp) as hours_diff from positions where position_status = 'OPEN';"
     # update
     global total_positions
     cursor = conn.cursor()
     cursor.execute(sql_open_pos)
     obj = cursor.fetchone()
     open_pos_count = obj[0]
-    day_diff = obj[1]
+    # day_diff = obj[1]
+    hour_diff = obj[1]
 
     if open_pos_count % 2 == 1:
         open_pos_count = open_pos_count + 1
@@ -741,7 +742,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     leverage = 5
 
     total_new_positions = new_buy_pos_count + new_sell_pos_count
-    if open_pos_count == 0 or (open_pos_count > 0 and open_pos_count + total_positions <= max_open_positions and day_diff >= 1):
+    if open_pos_count == 0 or (open_pos_count > 0 and open_pos_count + total_positions <= max_open_positions and hour_diff >= 12):
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
