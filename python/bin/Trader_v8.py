@@ -642,12 +642,12 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
             entry_price = float(response['entryPrice'])
             starting_margin = float(response['isolatedWallet'])
             leverage = int(response['leverage'])
-            side = response['side']
+            position_side = response['positionSide']
             position_quantity = abs(float(response['positionAmt']))
             liquidation_price = float(response['liquidationPrice'])
 
             record_to_insert = (
-                symbol, side, leverage_actual, starting_margin, starting_margin, entry_price, position_quantity,
+                symbol, position_side, leverage_actual, starting_margin, starting_margin, entry_price, position_quantity,
                 liquidation_price, 0,
                 'OPEN', 0, 0, 0, current_timestamp, current_timestamp, batch_id)
 
@@ -664,11 +664,13 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
         for row in obj:
             position_id = row[0]
             starting_margin = float(row[1])
-            side = row[2]
+            position_side = row[2]
             position_quantity = float(row[3])
-            if side == 'BUY':
+            if position_side == 'LONG':
+                side = "BUY"
                 insert_order_record(symbol, position_id, new_order_id_long, conn, um_futures_client)
-            elif side == 'SELL':
+            elif position_side == 'SHORT':
+                side = "SELL"
                 insert_order_record(symbol, position_id, new_order_id_short, conn, um_futures_client)
 
             # Create Take Profit Order
