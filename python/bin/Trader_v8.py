@@ -615,7 +615,7 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
 
         postgres_insert_query = """INSERT INTO positions (symbol, side, leverage, starting_margin, current_margin,
                     entry_price, position_quantity, liquidation_price, manual_added_margin, position_status, closing_pnl,
-                    fee_incurred, net_pnl, created_ts, updated_ts, batch_id, position_side) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
+                    fee_incurred, net_pnl, created_ts, updated_ts, batch_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
 
         response = um_futures_client.new_order(
             symbol=symbol,
@@ -643,14 +643,13 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
             starting_margin = float(response['isolatedWallet'])
             leverage = int(response['leverage'])
             side = response['side']
-            position_side = response['positionSide']
             position_quantity = abs(float(response['positionAmt']))
             liquidation_price = float(response['liquidationPrice'])
 
             record_to_insert = (
                 symbol, side, leverage_actual, starting_margin, starting_margin, entry_price, position_quantity,
                 liquidation_price, 0,
-                'OPEN', 0, 0, 0, current_timestamp, current_timestamp, batch_id, position_side)
+                'OPEN', 0, 0, 0, current_timestamp, current_timestamp, batch_id)
 
             cursor = conn.cursor()
             cursor.execute(postgres_insert_query, record_to_insert)
@@ -659,18 +658,17 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
             cursor.close()
 
         cursor = conn.cursor()
-        position_id_query = "select id, position_side, starting_margin, side, position_quantity from positions where symbol = '{}' and position_status = 'OPEN'".format(symbol)
+        position_id_query = "select id, starting_margin, side, position_quantity from positions where symbol = '{}' and position_status = 'OPEN'".format(symbol)
         cursor.execute(position_id_query)
-        obj = cursor.fetcAll()
+        obj = cursor.fetchall()
         for row in obj:
             position_id = row[0]
-            position_side = row[1]
-            starting_margin = float(row[2])
-            side = row[3]
-            position_quantity = float(row[4])
-            if position_side == 'LONG':
+            starting_margin = float(row[1])
+            side = row[2]
+            position_quantity = float(row[3])
+            if side == 'BUY':
                 insert_order_record(symbol, position_id, new_order_id_long, conn, um_futures_client)
-            elif position_side == 'SHORT':
+            elif side == 'SELL':
                 insert_order_record(symbol, position_id, new_order_id_short, conn, um_futures_client)
 
             # Create Take Profit Order
