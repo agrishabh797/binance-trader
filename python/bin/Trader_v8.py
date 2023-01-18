@@ -607,9 +607,10 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
     response = um_futures_client.mark_price(symbol=symbol)
     mark_price = float(response['markPrice'])
     if position_mode == 'hedge':
-        purchase_qty = float((each_position_amount * leverage_actual) / mark_price)
-    elif position_mode == 'one-way':
         purchase_qty = float(((each_position_amount / 2) * leverage_actual) / mark_price)
+    elif position_mode == 'one-way':
+        purchase_qty = float((each_position_amount * leverage_actual) / mark_price)
+
 
     purchase_qty = round_step_size(purchase_qty, exchange_info['stepSize'])
 
