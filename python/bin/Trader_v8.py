@@ -615,7 +615,7 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
 
         postgres_insert_query = """INSERT INTO positions (symbol, side, leverage, starting_margin, current_margin,
                     entry_price, position_quantity, liquidation_price, manual_added_margin, position_status, closing_pnl,
-                    fee_incurred, net_pnl, created_ts, updated_ts, batch_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
+                    fee_incurred, net_pnl, created_ts, updated_ts, batch_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
 
         response = um_futures_client.new_order(
             symbol=symbol,
