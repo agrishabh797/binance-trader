@@ -17,7 +17,7 @@ import random
 
 
 text_position = ''
-total_positions = 2
+total_positions = 4
 
 
 def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat, position_side="BOTH"):
@@ -821,7 +821,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # new_sell_pos_count = close_pos_count - new_buy_pos_count
 
     leverage = random.randint(10, 20)
-    leverage = 5
+    leverage = 20
     logging.info("open_pos_count: %s", open_pos_count)
     logging.info("total_positions: %s", total_positions)
     logging.info("hour_diff: %s", hour_diff)
