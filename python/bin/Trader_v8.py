@@ -128,14 +128,14 @@ def get_order_fee(symbol, order_id, um_futures_client):
 
 
 def get_existing_positions(conn):
-    sql = "select id from positions where position_status in ('OPEN', 'ALL_IN')"
+    sql = "select id, side from positions where position_status in ('OPEN', 'ALL_IN')"
     logging.info("Running the sql query: %s", sql)
     cursor = conn.cursor()
     cursor.execute(sql)
 
     position_ids = cursor.fetchall()
     cursor.close()
-    position_ids = [x[0] for x in position_ids]
+    position_ids = [(x[0], x[1]) for x in position_ids]
     logging.info("Fetched the following position ids")
     logging.info(position_ids)
     return position_ids
@@ -191,7 +191,7 @@ def get_total_fee(position_id, conn):
     return float(total_fee)
 
 
-def check_current_status_and_update(position_id, conn, um_futures_client):
+def check_current_status_and_update(position_id, conn, um_futures_client, position_side="BOTH"):
     current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
     sql = """select id, symbol, side, leverage, starting_margin, current_margin, 
@@ -227,10 +227,12 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         )
         logging.info("Unable to fetch position risk, Will retry later..")
         return
-    current_margin = float(response_risk[0]['isolatedWallet'])
-    entry_price = float(response_risk[0]['entryPrice'])
-    position_quantity = abs(float(response_risk[0]['positionAmt']))
-    liquidation_price = float(response_risk[0]['liquidationPrice'])
+    for response in response_risk:
+        if response['positionSide'] == position_side:
+            current_margin = float(response['isolatedWallet'])
+            entry_price = float(response['entryPrice'])
+            position_quantity = abs(float(response['positionAmt']))
+            liquidation_price = float(response['liquidationPrice'])
 
     profit_sql = """ select id, src_order_id from orders 
                             where position_id = {} and type = 'TAKE_PROFIT' and status = 'NEW'""".format(position_id)
@@ -909,8 +911,8 @@ def main():
     logging.info("Checking Existing Positions from Database")
     position_ids = get_existing_positions(conn)
 
-    for position_id in position_ids:
-        check_current_status_and_update(position_id, conn, um_futures_client)
+    for position_id, side in position_ids:
+        check_current_status_and_update(position_id, conn, um_futures_client, side)
 
     logging.info("Checking if we can create New Positions: ")
 
