@@ -20,7 +20,7 @@ text_position = ''
 total_positions = 2
 
 
-def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat):
+def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat, position_side="BOTH"):
     # Create Stop Loss Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
     response = um_futures_client.get_position_risk(symbol=symbol)
@@ -54,7 +54,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
         stopPrice=stop_price,
         workingType='MARK_PRICE',
         quantity=position_quantity,
-        price=loss_closing_price
+        price=loss_closing_price,
+        positionSide=position_side
     )
 
     logging.info("Loss order response from server.")
@@ -64,7 +65,7 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
-def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat):
+def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat, position_side="BOTH"):
 
     # Create Take Profit Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
@@ -99,7 +100,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
         stopPrice=stop_price,
         workingType='MARK_PRICE',
         quantity=position_quantity,
-        price=profit_closing_price
+        price=profit_closing_price,
+        positionSide=position_side
     )
 
     logging.info("Profit order response from server.")
@@ -674,9 +676,9 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
                 insert_order_record(symbol, position_id, new_order_id_short, conn, um_futures_client)
 
             # Create Take Profit Order
-            create_take_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat)
+            create_take_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat, position_side)
             # Create Stop Loss order
-            create_stop_loss_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat)
+            create_stop_loss_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat, position_side)
 
             logging.info("Created following position")
             logging.info("Position Id: %s", str(position_id))
@@ -721,7 +723,7 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
         insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
         # Create Take Profit Order
-        create_take_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat)
+        create_take_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat, po)
 
         # Create Stop Loss order
         create_stop_loss_order(symbol, position_id, starting_margin, side, conn, um_futures_client, is_repeat)
