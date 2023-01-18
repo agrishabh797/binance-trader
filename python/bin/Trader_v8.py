@@ -17,7 +17,7 @@ import random
 
 
 text_position = ''
-total_positions = 1
+total_positions = 2
 
 
 def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat):
