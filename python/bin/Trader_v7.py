@@ -17,8 +17,6 @@ import random
 
 
 text_position = ''
-total_positions = 4
-
 
 def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, is_repeat):
     # Create Stop Loss Order
@@ -30,8 +28,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     total_position_amount = entry_price * position_quantity
 
     # (10) % of margin is our loss
-    loss = float((10 * current_margin) / 100)
-    stop = float((9 * current_margin) / 100)
+    loss = float((2 * leverage * current_margin) / 100)
+    stop = float((1.8 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -75,8 +73,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     total_position_amount = entry_price * position_quantity
 
     # (20) % of margin is our loss
-    profit = float((20 * current_margin) / 100)
-    stop = float((16 * current_margin) / 100)
+    profit = float((4 * leverage * current_margin) / 100)
+    stop = float((3.5 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -263,7 +261,6 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     create_same_position_flag = False
 
     global text_position
-    global total_positions
     if current_margin == 0.0:
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
         logging.info("Current Margin is 0.0. Checking if closed with Profit, Loss or Manually.")
@@ -387,8 +384,10 @@ def get_utilized_wallet_amount(conn):
 
 def get_unused_wallet_amount(um_futures_client):
     account_info = um_futures_client.account()
-    unused_amount = float(account_info['totalOpenOrderInitialMargin']) + float(account_info['maxWithdrawAmount'])
-    return unused_amount
+    for asset in account_info['assets']:
+        if asset['asset'] == 'BUSD':
+            unused_amount = float(account_info['maxWithdrawAmount'])
+            return unused_amount
 
 
 def get_total_wallet_amount(conn, um_futures_client):
@@ -706,7 +705,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # formula - (ceil(total_wallet_amount / 200)) * 2
     current_time = datetime.now()
     batch_id = current_time.strftime('%Y%m%d%H%M')
-    max_open_positions = 8
+
     # total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
     # total_positions = (ceil(total_wallet_amount / 200)) * 2
     # total_positions = min(max_positions, total_positions)
@@ -715,16 +714,16 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # sql_sell = "select coalesce(count(current_margin), 0) from positions where position_status = 'OPEN' and side = 'SELL'"
     sql_open_pos = "select coalesce(count(current_margin), 0), DATEDIFF('hour', min(updated_ts)::timestamp, current_timestamp::timestamp) as hours_diff from positions where position_status = 'OPEN';"
     # update
-    global total_positions
+    # global total_positions
+    total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
+    total_positions = (ceil(total_wallet_amount / 100)) * 2
+    max_open_positions = total_positions * 2
     cursor = conn.cursor()
     cursor.execute(sql_open_pos)
     obj = cursor.fetchone()
     open_pos_count = obj[0]
     # day_diff = obj[1]
     hour_diff = obj[1]
-
-    if open_pos_count % 2 == 1:
-        open_pos_count = open_pos_count + 1
 
     # cursor.execute(sql_buy)
     # buy_pos_count = cursor.fetchone()[0]
@@ -737,9 +736,9 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # close_pos_count = total_positions - open_pos_count
     # new_buy_pos_count = int(close_pos_count / 2)
     # new_sell_pos_count = close_pos_count - new_buy_pos_count
-
-    leverage = random.randint(10, 20)
-    leverage = 7
+    leverage = (ceil(total_wallet_amount / 150)) + 4
+    # leverage = random.randint(10, 20)
+    # leverage = 7
     logging.info("open_pos_count: %s", open_pos_count)
     logging.info("total_positions: %s", total_positions)
     logging.info("hour_diff: %s", hour_diff)
@@ -747,11 +746,10 @@ def create_new_positions(max_positions, conn, um_futures_client):
     if open_pos_count == 0 or (open_pos_count > 0 and (open_pos_count + total_positions <= max_open_positions) and hour_diff >= 12):
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
-        total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
-        each_position_amount = float(10)
+        # each_position_amount = float(10)
         for symbol, side in new_positions_symbols.items():
-            # wallet_utilization = get_wallet_utilization(conn, um_futures_client)
+            wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
             create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client)
             # elif wallet_utilization >= 30:
@@ -831,8 +829,8 @@ def main():
 
     logging.info("Checking if we can create New Positions: ")
 
-    # wallet_utilization = get_wallet_utilization(conn, um_futures_client)
-    # logging.info("Wallet Utilization: %s", str(wallet_utilization))
+    wallet_utilization = get_wallet_utilization(conn, um_futures_client)
+    logging.info("Wallet Utilization: %s", str(wallet_utilization))
     logging.info("Checking if new positions need to be created")
     max_positions = 20
     create_new_positions(max_positions, conn, um_futures_client)
