@@ -739,7 +739,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # new_sell_pos_count = close_pos_count - new_buy_pos_count
 
     leverage = random.randint(10, 20)
-    leverage = 5
+    leverage = 7
     logging.info("open_pos_count: %s", open_pos_count)
     logging.info("total_positions: %s", total_positions)
     logging.info("hour_diff: %s", hour_diff)
@@ -749,7 +749,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
-        each_position_amount = float(15)
+        each_position_amount = float(10)
         for symbol, side in new_positions_symbols.items():
             # wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
