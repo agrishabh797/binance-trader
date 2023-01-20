@@ -283,7 +283,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
                 close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
             closing_order_id = profit_src_order_id
 
-            create_same_position_flag = True
+            # create_same_position_flag = True
 
         elif response_loss['status'] == 'FILLED':
             logging.info("Loss order id %s is filled. Position Closed on its own with Loss.", loss_src_order_id)
@@ -298,7 +298,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
 
-            create_opposite_position_flag = True
+            # create_opposite_position_flag = True
 
         else:
             logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
