@@ -53,8 +53,10 @@ def get_utilized_wallet_amount(conn):
 
 def get_unused_wallet_amount(um_futures_client):
     account_info = um_futures_client.account()
-    unused_amount = float(account_info['totalOpenOrderInitialMargin']) + float(account_info['maxWithdrawAmount'])
-    return unused_amount
+    for asset in account_info['assets']:
+        if asset['asset'] == 'BUSD':
+            unused_amount = float(asset['maxWithdrawAmount'])
+            return unused_amount
 
 
 def get_total_wallet_amount(conn, um_futures_client):
