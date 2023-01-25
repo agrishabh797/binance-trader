@@ -266,12 +266,18 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         logging.info("Current Margin is 0.0. Checking if closed with Profit, Loss or Manually.")
         response_profit = {'status': 'CANCELLED'}
         response_loss = {'status': 'CANCELLED'}
+        # n = 3
+        # while n > 0:
         if profit_src_order_id:
             logging.info("Getting Order information from API for Profit Order Id %s", profit_src_order_id)
             response_profit = um_futures_client.query_order(symbol=symbol, orderId=profit_src_order_id)
+            logging.info("response_profit: %s", response_profit)
         if loss_src_order_id:
             logging.info("Getting Order information from API for Loss Order Id %s", loss_src_order_id)
             response_loss = um_futures_client.query_order(symbol=symbol, orderId=loss_src_order_id)
+            logging.info("response_loss: %s", response_loss)
+        #    n = n - 1
+        #    time.sleep(1)
 
         # if filled
         if response_profit['status'] == 'FILLED':
