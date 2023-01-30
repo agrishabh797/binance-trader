@@ -349,6 +349,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         created_ts = obj[2]
         logging.info('sum_pnl: %s', sum_pnl)
         logging.info('count: %s', count)
+        logging.info('created_ts: %s', created_ts)
+        logging.info('current time: %s', current_time)
         cursor.close()
 
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
@@ -357,6 +359,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
             new_position_amount = float(5)
 
         hours_diff = (current_time - created_ts).total_seconds() / 3600
+        logging.info('hours diff: %s', hours_diff)
 
         if hours_diff < 24:
 
