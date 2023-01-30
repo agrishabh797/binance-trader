@@ -28,8 +28,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     total_position_amount = entry_price * position_quantity
 
     # (10) % of margin is our loss
-    loss = float((1 * leverage * current_margin) / 100)
-    stop = float((0.9 * leverage * current_margin) / 100)
+    loss = float((2 * leverage * current_margin) / 100)
+    stop = float((1.8 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -351,11 +351,11 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         cursor.close()
 
         total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-        new_position_amount = float(starting_margin * 1.7)
+        new_position_amount = float(starting_margin * 2)
         if new_position_amount > total_wallet_amount:
             new_position_amount = float(5)
 
-        if hours_diff < 48:
+        if hours_diff < 24:
 
             if net_pnl < 0:
                 opposite_side = ''
