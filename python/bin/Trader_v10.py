@@ -205,7 +205,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     manual_added_margin = pos_data[9]
     position_status = pos_data[10]
     # created_ts = datetime.strptime(pos_data[14], '%Y-%m-%d %H:%M:%S')
-    created_ts = pos_data[14]
+    # created_ts = pos_data[14]
     batch_id = pos_data[16]
 
     logging.info("Checking the status for following Position")
@@ -255,7 +255,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
     current_pnl_percentage = 0.0
     if current_margin != 0.0:
         current_pnl_percentage = float(float(response_risk[0]['unRealizedProfit']) / current_margin) * 100
-    hours_diff = (current_time - created_ts).total_seconds() / 3600
+
 
     create_opposite_position_flag = False
     create_same_position_flag = False
@@ -338,7 +338,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         logging.info("FEE    : %s", str(total_fee))
         logging.info("NET_PNL: %s", str(net_pnl))
 
-        fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)), count(1) from positions 
+        fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)), count(1), min(created_ts) from positions 
                                                         where batch_id = {} and symbol = '{}'""".format(batch_id,
                                                                                                         symbol)
         cursor = conn.cursor()
@@ -346,6 +346,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         obj = cursor.fetchone()
         sum_pnl = obj[0]
         count = obj[1]
+        created_ts = obj[2]
         logging.info('sum_pnl: %s', sum_pnl)
         logging.info('count: %s', count)
         cursor.close()
@@ -354,6 +355,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client):
         new_position_amount = float(starting_margin * 2)
         if new_position_amount > total_wallet_amount:
             new_position_amount = float(5)
+
+        hours_diff = (current_time - created_ts).total_seconds() / 3600
 
         if hours_diff < 24:
 
