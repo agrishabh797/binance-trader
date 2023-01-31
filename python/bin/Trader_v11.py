@@ -23,12 +23,14 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
 
     # Create New Order for 25% loss for 50% addition of original margin
     exchange_info = get_exchange_info(symbol, um_futures_client)
-    response = um_futures_client.get_position_risk(symbol=symbol)
-    entry_price = float(response[0]['entryPrice'])
-    leverage = int(response[0]['leverage'])
-    position_quantity = abs(float(response[0]['positionAmt']))
-    total_position_amount = entry_price * position_quantity
+    responses = um_futures_client.get_position_risk(symbol=symbol)
+    for response in responses:
+        if response['positionSide'] == position_side:
+            entry_price = float(response[0]['entryPrice'])
+            leverage = int(response[0]['leverage'])
+            position_quantity = abs(float(response[0]['positionAmt']))
 
+    total_position_amount = entry_price * position_quantity
     loss = float((1 * leverage * current_margin) / 100)
 
     if side == 'BUY':
@@ -68,10 +70,13 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
 def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side):
     # Create Stop Loss Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
-    response = um_futures_client.get_position_risk(symbol=symbol)
-    entry_price = float(response[0]['entryPrice'])
-    leverage = int(response[0]['leverage'])
-    position_quantity = abs(float(response[0]['positionAmt']))
+    responses = um_futures_client.get_position_risk(symbol=symbol)
+    for response in responses:
+        if response['positionSide'] == position_side:
+            entry_price = float(response[0]['entryPrice'])
+            leverage = int(response[0]['leverage'])
+            position_quantity = abs(float(response[0]['positionAmt']))
+
     total_position_amount = entry_price * position_quantity
 
     # (10) % of margin is our loss
@@ -114,10 +119,13 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
 
     # Create Take Profit Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
-    response = um_futures_client.get_position_risk(symbol=symbol)
-    entry_price = float(response[0]['entryPrice'])
-    leverage = int(response[0]['leverage'])
-    position_quantity = abs(float(response[0]['positionAmt']))
+    responses = um_futures_client.get_position_risk(symbol=symbol)
+    for response in responses:
+        if response['positionSide'] == position_side:
+            entry_price = float(response[0]['entryPrice'])
+            leverage = int(response[0]['leverage'])
+            position_quantity = abs(float(response[0]['positionAmt']))
+
     total_position_amount = entry_price * position_quantity
 
     # (20) % of margin is our loss
@@ -349,6 +357,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'FILLED', conn, um_futures_client)
             if loss_order_id:
                 close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
+            if limit_order_id:
+                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
             closing_order_id = profit_src_order_id
 
             # create_same_position_flag = True
