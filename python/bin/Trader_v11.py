@@ -26,9 +26,9 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     responses = um_futures_client.get_position_risk(symbol=symbol)
     for response in responses:
         if response['positionSide'] == position_side:
-            entry_price = float(response[0]['entryPrice'])
-            leverage = int(response[0]['leverage'])
-            position_quantity = abs(float(response[0]['positionAmt']))
+            entry_price = float(response['entryPrice'])
+            leverage = int(response['leverage'])
+            position_quantity = abs(float(response['positionAmt']))
 
     total_position_amount = entry_price * position_quantity
     loss = float((1 * leverage * current_margin) / 100)
@@ -73,9 +73,9 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     responses = um_futures_client.get_position_risk(symbol=symbol)
     for response in responses:
         if response['positionSide'] == position_side:
-            entry_price = float(response[0]['entryPrice'])
-            leverage = int(response[0]['leverage'])
-            position_quantity = abs(float(response[0]['positionAmt']))
+            entry_price = float(response['entryPrice'])
+            leverage = int(response['leverage'])
+            position_quantity = abs(float(response['positionAmt']))
 
     total_position_amount = entry_price * position_quantity
 
@@ -122,9 +122,9 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     responses = um_futures_client.get_position_risk(symbol=symbol)
     for response in responses:
         if response['positionSide'] == position_side:
-            entry_price = float(response[0]['entryPrice'])
-            leverage = int(response[0]['leverage'])
-            position_quantity = abs(float(response[0]['positionAmt']))
+            entry_price = float(response['entryPrice'])
+            leverage = int(response['leverage'])
+            position_quantity = abs(float(response['positionAmt']))
 
     total_position_amount = entry_price * position_quantity
 
