@@ -115,7 +115,7 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
-def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side):
+def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side, is_repeat=False):
 
     # Create Take Profit Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
@@ -128,9 +128,13 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
 
     total_position_amount = entry_price * position_quantity
 
-    # (20) % of margin is our loss
-    profit = float((1 * leverage * current_margin) / 100)
-    stop = float((0.8 * leverage * current_margin) / 100)
+    if is_repeat:
+        profit = float((0.5 * leverage * current_margin) / 100)
+        stop = float((0.4 * leverage * current_margin) / 100)
+    else:
+        # (20) % of margin is our loss
+        profit = float((1 * leverage * current_margin) / 100)
+        stop = float((0.8 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -468,7 +472,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'FILLED', conn, um_futures_client)
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
                 logging.info("Closing the previous profit order and creating new for updated quantity.")
-                create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side)
+                create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side, is_repeat=True)
                 logging.info("Also now Creating the stop loss order.")
                 create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side)
 
