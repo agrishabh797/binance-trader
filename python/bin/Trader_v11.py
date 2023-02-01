@@ -129,8 +129,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     total_position_amount = entry_price * position_quantity
 
     if is_repeat:
-        profit = float((0.5 * leverage * current_margin) / 100)
-        stop = float((0.4 * leverage * current_margin) / 100)
+        profit = float((0.1 * leverage * current_margin) / 100)
+        stop = float((0 * leverage * current_margin) / 100)
     else:
         # (20) % of margin is our loss
         profit = float((1 * leverage * current_margin) / 100)
@@ -865,7 +865,8 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # update
     # global total_positions
     total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-    total_positions = (ceil(total_wallet_amount / 100)) * 2
+    # total_positions = (ceil(total_wallet_amount / 100)) * 2
+    total_positions = 4
     max_open_positions = total_positions * 2
     cursor = conn.cursor()
     cursor.execute(sql_open_pos)
@@ -892,7 +893,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     logging.info("total_positions: %s", total_positions)
     logging.info("hour_diff: %s", hour_diff)
     total_new_positions = new_buy_pos_count + new_sell_pos_count
-    total_new_positions = 1
+    # total_new_positions = 4
     if open_pos_count == 0:
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
