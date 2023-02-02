@@ -80,8 +80,8 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     total_position_amount = entry_price * position_quantity
 
     # (10) % of margin is our loss
-    loss = float((1.5 * leverage * current_margin) / 100)
-    stop = float((1.47 * leverage * current_margin) / 100)
+    loss = float((1 * leverage * current_margin) / 100)
+    stop = float((0.9 * leverage * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -94,8 +94,22 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
 
     loss_closing_price = float(loss_position_amount / position_quantity)
     loss_closing_price = round_step_size(loss_closing_price, exchange_info['tickSize'])
+
     stop_price = float(stop_position_amount / position_quantity)
     stop_price = round_step_size(stop_price, exchange_info['tickSize'])
+
+    response_mp = um_futures_client.mark_price(symbol=symbol)
+    mark_price = float(response_mp['markPrice'])
+    if (side == 'BUY' and mark_price < loss_closing_price) or (side == 'SELL' and mark_price > loss_closing_price):
+        response = um_futures_client.new_order(
+            symbol=symbol,
+            side=close_side,
+            positionSide=position_side,
+            reduceOnly=True,
+            type="MARKET",
+        )
+        return
+
     logging.info("Symbol: %s, side: %s, Loss Closing Price: %s, Limit Closing Price: %s", symbol, close_side, loss_closing_price, stop_price)
     response = um_futures_client.new_order(
         symbol=symbol,
@@ -389,8 +403,6 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
             if loss_order_id:
                 close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
-            if limit_order_id:
-                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
 
             response = um_futures_client.get_all_orders(symbol=symbol)
             closing_order_id = response[-1]['orderId']
@@ -475,6 +487,8 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
                 logging.info("Closing the previous profit order and creating new for updated quantity.")
                 create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side, is_repeat=True)
+                logging.info("Also now Creating the stop loss order.")
+                create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side)
 
                 logging.info("Position updated with following")
                 logging.info("Position Id: %s", str(position_id))
@@ -793,8 +807,6 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
         create_take_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client, position_side)
         # Create Loss Limit order
         create_limit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client, position_side)
-        # Create Stop Loss Order
-        create_stop_loss_order(symbol, position_id, starting_margin, side, conn, um_futures_client, position_side)
 
         logging.info("Created following position")
         logging.info("Position Id: %s", str(position_id))
