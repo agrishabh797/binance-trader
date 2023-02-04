@@ -67,7 +67,49 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
-def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side):
+def create_stop_loss_market_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side):
+    # Create Stop Loss Order
+    exchange_info = get_exchange_info(symbol, um_futures_client)
+    responses = um_futures_client.get_position_risk(symbol=symbol)
+    for response in responses:
+        if response['positionSide'] == position_side:
+            entry_price = float(response['entryPrice'])
+            leverage = int(response['leverage'])
+            position_quantity = abs(float(response['positionAmt']))
+
+    total_position_amount = entry_price * position_quantity
+
+    loss = float((1.47 * leverage * current_margin) / 100)
+
+    if side == 'BUY':
+        loss_position_amount = total_position_amount - loss
+        close_side = 'SELL'
+    elif side == 'SELL':
+        loss_position_amount = total_position_amount + loss
+        close_side = 'BUY'
+
+    loss_closing_price = float(loss_position_amount / position_quantity)
+    loss_closing_price = round_step_size(loss_closing_price, exchange_info['tickSize'])
+
+    logging.info("Symbol: %s, side: %s, Loss Closing Price: %s", symbol, close_side, loss_closing_price)
+    response = um_futures_client.new_order(
+        symbol=symbol,
+        side=close_side,
+        type="STOP_MARKET",
+        stopPrice=loss_closing_price,
+        closePosition=True,
+        workingType='MARK_PRICE',
+        positionSide=position_side
+    )
+
+    logging.info("Loss order response from server.")
+    logging.info(response)
+
+    new_order_id = response['orderId']
+    insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
+
+
+def create_stop_loss_limit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side):
     # Create Stop Loss Order
     exchange_info = get_exchange_info(symbol, um_futures_client)
     responses = um_futures_client.get_position_risk(symbol=symbol)
@@ -98,35 +140,32 @@ def create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_f
     stop_price = float(stop_position_amount / position_quantity)
     stop_price = round_step_size(stop_price, exchange_info['tickSize'])
 
-    response_mp = um_futures_client.mark_price(symbol=symbol)
-    mark_price = float(response_mp['markPrice'])
-    if (side == 'BUY' and mark_price < loss_closing_price) or (side == 'SELL' and mark_price > loss_closing_price):
+    logging.info("Symbol: %s, side: %s, Loss Closing Price: %s, Limit Closing Price: %s", symbol, close_side, loss_closing_price, stop_price)
+    try:
         response = um_futures_client.new_order(
             symbol=symbol,
             side=close_side,
-            positionSide=position_side,
-            reduceOnly=True,
-            type="MARKET",
+            type="STOP",
+            stopPrice=stop_price,
+            workingType='MARK_PRICE',
+            quantity=position_quantity,
+            price=loss_closing_price,
+            positionSide=position_side
         )
-        return
-
-    logging.info("Symbol: %s, side: %s, Loss Closing Price: %s, Limit Closing Price: %s", symbol, close_side, loss_closing_price, stop_price)
-    response = um_futures_client.new_order(
-        symbol=symbol,
-        side=close_side,
-        type="STOP",
-        stopPrice=stop_price,
-        workingType='MARK_PRICE',
-        quantity=position_quantity,
-        price=loss_closing_price,
-        positionSide=position_side
-    )
-
-    logging.info("Loss order response from server.")
-    logging.info(response)
-
-    new_order_id = response['orderId']
-    insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
+    except ClientError as error:
+        logging.info(
+            "Found error. status: {}, error code: {}, error message: {}".format(
+                error.status_code, error.error_code, error.error_message
+            )
+        )
+        return False
+    finally:
+        logging.info("Loss order response from server.")
+        logging.info(response)
+    
+        new_order_id = response['orderId']
+        insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
+        return True
 
 
 def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side, is_repeat=False):
@@ -320,21 +359,32 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         profit_order_id = order_data[0]
         profit_src_order_id = order_data[1]
 
-    loss_sql = """ select id, src_order_id from orders 
+    loss_limit_sql = """ select id, src_order_id from orders 
                                     where position_id = {} and type = 'STOP' and status = 'NEW'""".format(position_id)
     cursor = conn.cursor()
-    cursor.execute(loss_sql)
+    cursor.execute(loss_limit_sql)
     order_data = cursor.fetchone()
     cursor.close()
-    loss_order_id = None
-    loss_src_order_id = None
+    loss_limit_order_id = None
+    loss_limit_src_order_id = None
     if order_data is not None:
-        loss_order_id = order_data[0]
-        loss_src_order_id = order_data[1]
+        loss_limit_order_id = order_data[0]
+        loss_limit_src_order_id = order_data[1]
+
+    loss_market_sql = """ select id, src_order_id from orders 
+                                        where position_id = {} and type = 'STOP_MARKET' and status = 'NEW'""".format(position_id)
+    cursor = conn.cursor()
+    cursor.execute(loss_market_sql)
+    order_data = cursor.fetchone()
+    cursor.close()
+    loss_market_order_id = None
+    loss_market_src_order_id = None
+    if order_data is not None:
+        loss_market_order_id = order_data[0]
+        loss_market_src_order_id = order_data[1]
 
     limit_sql = """ select id, src_order_id from orders 
-                                        where position_id = {} and type = 'LIMIT' and status = 'NEW'""".format(
-        position_id)
+                                        where position_id = {} and type = 'LIMIT' and status = 'NEW'""".format(position_id)
     cursor = conn.cursor()
     cursor.execute(limit_sql)
     order_data = cursor.fetchone()
@@ -353,17 +403,22 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
         logging.info("Current Margin is 0.0. Checking if closed with Profit, Loss or Manually.")
         response_profit = {'status': 'CANCELLED'}
-        response_loss = {'status': 'CANCELLED'}
+        response_loss_limit = {'status': 'CANCELLED'}
+        response_loss_market = {'status': 'CANCELLED'}
         # n = 3
         # while n > 0:
         if profit_src_order_id:
             logging.info("Getting Order information from API for Profit Order Id %s", profit_src_order_id)
             response_profit = um_futures_client.query_order(symbol=symbol, orderId=profit_src_order_id)
             logging.info("response_profit: %s", response_profit)
-        if loss_src_order_id:
-            logging.info("Getting Order information from API for Loss Order Id %s", loss_src_order_id)
-            response_loss = um_futures_client.query_order(symbol=symbol, orderId=loss_src_order_id)
-            logging.info("response_loss: %s", response_loss)
+        if loss_limit_src_order_id:
+            logging.info("Getting Order information from API for Loss Limit Order Id %s", loss_limit_src_order_id)
+            response_loss_limit = um_futures_client.query_order(symbol=symbol, orderId=loss_limit_src_order_id)
+            logging.info("response_loss: %s", response_loss_limit)
+        if loss_market_src_order_id:
+            logging.info("Getting Order information from API for Loss Market Order Id %s", loss_market_src_order_id)
+            response_loss_limit = um_futures_client.query_order(symbol=symbol, orderId=loss_market_src_order_id)
+            logging.info("response_loss: %s", response_loss_market)
         #    n = n - 1
         #    time.sleep(1)
 
@@ -373,23 +428,46 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
             logging.info("Cancelling the loss order.")
             if profit_order_id:
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'FILLED', conn, um_futures_client)
-            if loss_order_id:
-                close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
+            if loss_limit_order_id:
+                close_and_update_order(symbol, loss_limit_order_id, loss_limit_src_order_id, 'CANCEL', conn, um_futures_client)
+            if loss_market_order_id:
+                close_and_update_order(symbol, loss_market_order_id, loss_market_src_order_id, 'CANCEL', conn, um_futures_client)
             if limit_order_id:
                 close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
+                
             closing_order_id = profit_src_order_id
 
             # create_same_position_flag = True
 
-        elif response_loss['status'] == 'FILLED':
-            logging.info("Loss order id %s is filled. Position Closed on its own with Loss.", loss_src_order_id)
+        elif response_loss_limit['status'] == 'FILLED':
+            logging.info("Loss Limit order id %s is filled. Position Closed on its own with Loss.", loss_limit_src_order_id)
             logging.info("Cancelling the profit order.")
 
             if profit_order_id:
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
-            if loss_order_id:
-                close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'FILLED', conn, um_futures_client)
-            closing_order_id = loss_src_order_id
+            if loss_limit_order_id:
+                close_and_update_order(symbol, loss_limit_order_id, loss_limit_src_order_id, 'FILLED', conn, um_futures_client)
+            if loss_market_order_id:
+                close_and_update_order(symbol, loss_market_order_id, loss_market_src_order_id, 'CANCEL', conn, um_futures_client)
+            if limit_order_id:
+                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
+            closing_order_id = loss_limit_src_order_id
+
+        elif response_loss_market['status'] == 'FILLED':
+            logging.info("Loss Market order id %s is filled. Position Closed on its own with Loss.", loss_market_src_order_id)
+            logging.info("Cancelling the profit order.")
+
+            if profit_order_id:
+                close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
+            if loss_limit_order_id:
+                close_and_update_order(symbol, loss_limit_order_id, loss_limit_src_order_id, 'CANCEL', conn,
+                                       um_futures_client)
+            if loss_market_order_id:
+                close_and_update_order(symbol, loss_market_order_id, loss_market_src_order_id, 'FILLED', conn,
+                                       um_futures_client)
+            if limit_order_id:
+                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
+            closing_order_id = loss_market_src_order_id
 
             # Update 2023/01/05 - Since the position closed with loss, lets create the same position with opposite side
             # i.e if this was BUY lets create SELL or vice versa.
@@ -397,12 +475,16 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
             # create_opposite_position_flag = True
 
         else:
-            logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_src_order_id)
+            logging.info("Profit order id %s and Loss order id %s is not filled. Position Closed manually.", profit_src_order_id, loss_limit_src_order_id)
             logging.info("Cancelling the limit order and profit order.")
             if profit_order_id:
                 close_and_update_order(symbol, profit_order_id, profit_src_order_id, 'CANCEL', conn, um_futures_client)
-            if loss_order_id:
-                close_and_update_order(symbol, loss_order_id, loss_src_order_id, 'CANCEL', conn, um_futures_client)
+            if loss_limit_order_id:
+                close_and_update_order(symbol, loss_limit_order_id, loss_limit_src_order_id, 'CANCEL', conn, um_futures_client)
+            if loss_market_order_id:
+                close_and_update_order(symbol, loss_market_order_id, loss_market_src_order_id, 'CANCEL', conn, um_futures_client)
+            if limit_order_id:
+                close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
 
             response = um_futures_client.get_all_orders(symbol=symbol)
             closing_order_id = response[-1]['orderId']
@@ -488,7 +570,10 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 logging.info("Closing the previous profit order and creating new for updated quantity.")
                 create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side, is_repeat=True)
                 logging.info("Also now Creating the stop loss order.")
-                create_stop_loss_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side)
+                if create_stop_loss_limit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side):
+                    if loss_market_order_id:
+                        close_and_update_order(symbol, loss_market_order_id, loss_market_src_order_id, 'CANCEL', conn,
+                                           um_futures_client)
 
                 logging.info("Position updated with following")
                 logging.info("Position Id: %s", str(position_id))
@@ -807,6 +892,8 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
         create_take_profit_order(symbol, position_id, starting_margin, side, conn, um_futures_client, position_side)
         # Create Loss Limit order
         create_limit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client, position_side)
+        # Create Stop Loss Markey order
+        create_stop_loss_market_order(symbol, position_id, starting_margin, side, conn, um_futures_client, position_side)
 
         logging.info("Created following position")
         logging.info("Position Id: %s", str(position_id))
@@ -889,6 +976,11 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # day_diff = obj[1]
     hour_diff = obj[1]
 
+    last_batch_query = "select sum(net_pnl), DATEDIFF('minute', max(updated_ts)::timestamp, current_timestamp::timestamp) as mins_diff from positions where batch_id = (select max(batch_id) from positions);"
+    cursor.execute(last_batch_query)
+    obj = cursor.fetchone()
+    sum_pnl = obj[0]
+    min_diff = obj[1]
     # cursor.execute(sql_buy)
     # buy_pos_count = cursor.fetchone()[0]
 
@@ -905,10 +997,10 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # leverage = 7
     logging.info("open_pos_count: %s", open_pos_count)
     logging.info("total_positions: %s", total_positions)
-    logging.info("hour_diff: %s", hour_diff)
+    logging.info("min_diff: %s", min_diff)
     total_new_positions = new_buy_pos_count + new_sell_pos_count
     # total_new_positions = 4
-    if open_pos_count == 0:
+    if open_pos_count == 0 and (sum_pnl >= 0 or (sum_pnl < 0 and min_diff > 15)):
         logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
         new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
