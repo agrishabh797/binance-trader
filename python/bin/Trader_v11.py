@@ -203,22 +203,29 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     stop_price = float(stop_position_amount / position_quantity)
     stop_price = round_step_size(stop_price, exchange_info['tickSize'])
     logging.info("Symbol: %s, side: %s, Profit Closing Price: %s, Limit Closing Price: %s", symbol, close_side, profit_closing_price, stop_price)
-    response = um_futures_client.new_order(
-        symbol=symbol,
-        side=close_side,
-        type="TAKE_PROFIT",
-        stopPrice=stop_price,
-        workingType='MARK_PRICE',
-        quantity=position_quantity,
-        price=profit_closing_price,
-        positionSide=position_side
-    )
+    try:
+        response = um_futures_client.new_order(
+            symbol=symbol,
+            side=close_side,
+            type="TAKE_PROFIT",
+            stopPrice=stop_price,
+            workingType='MARK_PRICE',
+            quantity=position_quantity,
+            price=profit_closing_price,
+            positionSide=position_side
+        )
+    except ClientError as error:
+        logging.info(
+            "Found error. status: {}, error code: {}, error message: {}".format(
+                error.status_code, error.error_code, error.error_message
+            )
+        )
+    finally:
+        logging.info("Profit order response from server.")
+        logging.info(response)
 
-    logging.info("Profit order response from server.")
-    logging.info(response)
-
-    new_order_id = response['orderId']
-    insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
+        new_order_id = response['orderId']
+        insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
 def get_order_pnl(symbol, order_id, um_futures_client):
