@@ -424,7 +424,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
             logging.info("response_loss: %s", response_loss_limit)
         if loss_market_src_order_id:
             logging.info("Getting Order information from API for Loss Market Order Id %s", loss_market_src_order_id)
-            response_loss_limit = um_futures_client.query_order(symbol=symbol, orderId=loss_market_src_order_id)
+            response_loss_market = um_futures_client.query_order(symbol=symbol, orderId=loss_market_src_order_id)
             logging.info("response_loss: %s", response_loss_market)
         #    n = n - 1
         #    time.sleep(1)
