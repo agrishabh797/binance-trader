@@ -220,12 +220,13 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
                 error.status_code, error.error_code, error.error_message
             )
         )
-    finally:
-        logging.info("Profit order response from server.")
-        logging.info(response)
+        return
 
-        new_order_id = response['orderId']
-        insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
+    logging.info("Profit order response from server.")
+    logging.info(response)
+
+    new_order_id = response['orderId']
+    insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
 def get_order_pnl(symbol, order_id, um_futures_client):
