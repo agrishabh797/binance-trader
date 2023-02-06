@@ -504,7 +504,10 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 close_and_update_order(symbol, limit_order_id, limit_src_order_id, 'CANCEL', conn, um_futures_client)
 
             response = um_futures_client.get_all_orders(symbol=symbol)
-            closing_order_id = response[-1]['orderId']
+            if response[-1]['positionSide'] == position_side:
+                closing_order_id = response[-1]['orderId']
+            else:
+                closing_order_id = response[-2]['orderId']
             logging.info("Position closed with order id %s.", closing_order_id)
             insert_order_record(symbol, position_id, closing_order_id, conn, um_futures_client)
 
