@@ -224,8 +224,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
             symbol=symbol,
             side=close_side,
             type="MARKET",
-            reduceOnly=True,
-            positionSide=position_side
+            positionSide=position_side,
+            quantity=position_quantity
         )
         logging.info("Market order response from server.")
         logging.info(response)
