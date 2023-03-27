@@ -14,6 +14,7 @@ import random
 from twilio.rest import Client
 from binance.error import ClientError
 import random
+import requests
 
 
 text_position = ''
@@ -348,7 +349,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         logging.info("PNL    : %s", str(pnl))
         logging.info("FEE    : %s", str(total_fee))
         logging.info("NET_PNL: %s", str(net_pnl))
-
+        text_position = text_position + str(symbol) + " closed with NET PNL " + str(net_pnl) + " on " + position_side + " side.\n"
         '''
         fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)), count(1), min(created_ts) from positions 
                                                         where batch_id = {} and symbol = '{}'""".format(batch_id,
@@ -425,6 +426,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 cursor.execute(query)
                 cursor.close()
                 conn.commit()
+                text_position = text_position + str(symbol) + " updated with limit margin " + str(current_margin) + " on " + position_side + " side.\n"
 
 
 def get_utilized_wallet_amount(conn):
@@ -733,9 +735,8 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
         logging.info("Leverage   : %s", str(leverage))
         logging.info("Margin     : %s", str(starting_margin))
         logging.info("Quantity   : %s", str(position_quantity))
-
-    global text_position
-    # text_position = text_position + str(symbol) + " created with margin " + str(round(starting_margin, 2)) + "\n"
+        global text_position
+        text_position = text_position + str(symbol) + " created with margin " + str(starting_margin) + " on " + position_side + " side.\n"
 
 
 def check_and_update_symbols(conn, um_futures_client):
@@ -864,6 +865,18 @@ def time_is_between(time, time_range):
     return time_range[0] <= time <= time_range[1]
 
 
+def send_telegram(message, telegram_token):
+
+    chat_id = '1061350969'
+    api_url = f'https://api.telegram.org/bot{telegram_token}/sendMessage'
+
+    try:
+        response = requests.post(api_url, json={'chat_id': chat_id, 'text': message})
+        print(response.text)
+    except Exception as e:
+        print(e)
+
+
 def main():
     # Set the config parameters using the config file
     current_time = datetime.now()
@@ -926,6 +939,12 @@ def main():
 
     conn.commit()
     conn.close()
+
+    global text_position
+
+    if text_position:
+        telegram_token = get_db_details(connections_file, 'TELEGRAM')['KEY']
+        send_telegram(text_position, telegram_token)
 
 
 if __name__ == "__main__":
