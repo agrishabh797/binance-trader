@@ -943,7 +943,7 @@ def main():
     global text_position
 
     if text_position:
-        telegram_token = get_db_details(connections_file, 'TELEGRAM')['KEY']
+        telegram_token = get_db_details(connections_file, 'TELEGRAM')['TOKEN']
         send_telegram(text_position, telegram_token)
 
 
