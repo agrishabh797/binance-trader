@@ -349,7 +349,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         logging.info("PNL    : %s", str(pnl))
         logging.info("FEE    : %s", str(total_fee))
         logging.info("NET_PNL: %s", str(net_pnl))
-        text_position = text_position + str(symbol) + " closed with NET PNL " + str(net_pnl) + " on " + position_side + " side.\n"
+        text_position = text_position + str(symbol) + " closed with NET PNL " + str(round(net_pnl, 4)) + " on " + position_side + " side.\n"
         '''
         fetch_last_pnl_sql = """ select sum(coalesce(net_pnl, 0)), count(1), min(created_ts) from positions 
                                                         where batch_id = {} and symbol = '{}'""".format(batch_id,
@@ -426,7 +426,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 cursor.execute(query)
                 cursor.close()
                 conn.commit()
-                text_position = text_position + str(symbol) + " updated with limit margin " + str(current_margin) + " on " + position_side + " side.\n"
+                text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 4)) + " on " + position_side + " side.\n"
 
 
 def get_utilized_wallet_amount(conn):
@@ -736,7 +736,7 @@ def create_position(batch_id, symbol, side, leverage, each_position_amount, conn
         logging.info("Margin     : %s", str(starting_margin))
         logging.info("Quantity   : %s", str(position_quantity))
         global text_position
-        text_position = text_position + str(symbol) + " created with margin " + str(starting_margin) + " on " + position_side + " side.\n"
+        text_position = text_position + str(symbol) + " created with margin " + str(round(starting_margin, 4)) + " on " + position_side + " side.\n"
 
 
 def check_and_update_symbols(conn, um_futures_client):
