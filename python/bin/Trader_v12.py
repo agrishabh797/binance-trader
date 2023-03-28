@@ -524,22 +524,14 @@ def decide_side(symbol, um_futures_client):
     return side
 
 
-def get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client):
+def get_new_positions_symbols(total_new_positions, conn, um_futures_client):
     sql = "select symbol_name from symbols where is_active = 'Y' and symbol_name not in (select symbol from positions where position_status in ('OPEN', 'ALL_IN'))"
     cursor = conn.cursor()
     cursor.execute(sql)
     new_positions = cursor.fetchall()
     new_positions = [x[0] for x in new_positions]
     new_positions_selected = random.sample(new_positions, total_new_positions)
-    new_positions_ordered = {}
-    l = ['BUY' for i in range(new_buy_pos_count)] + ['SELL' for i in range(new_sell_pos_count)]
-    random.shuffle(l)
-    for i in range(total_new_positions):
-        symbol = new_positions_selected.pop()
-        side = l.pop() #decide_side(symbol, um_futures_client)
-        new_positions_ordered[symbol] = side
-
-    return new_positions_ordered
+    return new_positions_selected
 
 
 def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
@@ -831,11 +823,10 @@ def create_new_positions(max_positions, conn, um_futures_client):
     logging.info("open_pos_count: %s", open_pos_count)
     logging.info("total_positions: %s", total_positions)
     logging.info("min_diff: %s", min_diff)
-    total_new_positions = new_buy_pos_count + new_sell_pos_count
+    total_new_positions = total_positions - (ceil(open_pos_count / 2))
     # total_new_positions = 4
-    if open_pos_count % 2 == 0 and (open_pos_count < total_positions * 2):
-        logging.info("Last batch completed, creating new batch of %s positions", str(total_positions))
-        new_positions_symbols = get_new_positions_symbols(total_new_positions, new_buy_pos_count, new_sell_pos_count, conn, um_futures_client)
+    if total_new_positions:
+        new_positions_symbols = get_new_positions_symbols(total_new_positions, conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
         # each_position_amount = float(10)
         for symbol, side in new_positions_symbols.items():
