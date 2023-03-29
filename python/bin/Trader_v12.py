@@ -829,7 +829,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
         new_positions_symbols = get_new_positions_symbols(total_new_positions, conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
         # each_position_amount = float(10)
-        for symbol in new_positions_symbols.items():
+        for symbol in new_positions_symbols:
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
             create_position(batch_id, symbol, leverage, each_position_amount, conn, um_futures_client)
