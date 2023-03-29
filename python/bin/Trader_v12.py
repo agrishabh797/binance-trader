@@ -444,7 +444,7 @@ def get_unused_wallet_amount(um_futures_client):
     account_info = um_futures_client.account()
     for asset in account_info['assets']:
         if asset['asset'] == 'BUSD':
-            unused_amount = float(asset['maxWithdrawAmount'])
+            unused_amount = float(asset['maxWithdrawAmount']) + float(asset['openOrderInitialMargin'])
             return unused_amount
 
 
