@@ -823,11 +823,16 @@ def create_new_positions(max_positions, conn, um_futures_client):
     logging.info("open_pos_count: %s", open_pos_count)
     logging.info("total_positions: %s", total_positions)
     logging.info("min_diff: %s", min_diff)
+    logging.info("total_wallet_amount: %s", total_wallet_amount)
+
     total_new_positions = total_positions - (ceil(open_pos_count / 2))
+    logging.info("total_new_positions: %s", total_new_positions)
     # total_new_positions = 4
     if total_new_positions:
         new_positions_symbols = get_new_positions_symbols(total_new_positions, conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
+        logging.info("each_position_amount: %s", each_position_amount)
+
         # each_position_amount = float(10)
         for symbol in new_positions_symbols:
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
