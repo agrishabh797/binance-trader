@@ -638,7 +638,7 @@ def get_rounded_quantity(symbol, price, um_futures_client):
     return round_step_size(price, get_lot_size(symbol, um_futures_client))
 
 
-def create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client):
+def create_position(batch_id, symbol, leverage, each_position_amount, conn, um_futures_client):
 
     # leverage = 10
     exchange_info = get_exchange_info(symbol, um_futures_client)
@@ -829,10 +829,10 @@ def create_new_positions(max_positions, conn, um_futures_client):
         new_positions_symbols = get_new_positions_symbols(total_new_positions, conn, um_futures_client)
         each_position_amount = float(total_wallet_amount / 2.5) / total_positions
         # each_position_amount = float(10)
-        for symbol, side in new_positions_symbols.items():
+        for symbol in new_positions_symbols.items():
             wallet_utilization = get_wallet_utilization(conn, um_futures_client)
             # if wallet_utilization < 30:
-            create_position(batch_id, symbol, side, leverage, each_position_amount, conn, um_futures_client)
+            create_position(batch_id, symbol, leverage, each_position_amount, conn, um_futures_client)
             # elif wallet_utilization >= 30:
             #    break
 
