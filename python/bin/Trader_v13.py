@@ -295,7 +295,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         logging.info('count: %s', count)
         cursor.close()
 
-        if count < 3:
+        if count < 3 and net_pnl > 0:
             logging.info("Creating a position again with %s side", position_side)
             create_position(batch_id, symbol, leverage, starting_margin, conn, um_futures_client, side=position_side)
         
