@@ -509,7 +509,7 @@ def get_rounded_quantity(symbol, price, um_futures_client):
     return round_step_size(price, get_lot_size(symbol, um_futures_client))
 
 
-def create_position(batch_id, symbol, leverage, each_position_amount, conn, um_futures_client, side="both"):
+def create_position(batch_id, symbol, leverage, each_position_amount, conn, um_futures_client, side="BOTH"):
     # leverage = 10
     exchange_info = get_exchange_info(symbol, um_futures_client)
     current_time = datetime.now()
