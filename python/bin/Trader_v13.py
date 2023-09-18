@@ -616,8 +616,8 @@ def check_and_update_symbols(conn, um_futures_client):
     exchange_info = um_futures_client.exchange_info()
     incoming_symbol_list = []
     for position in exchange_info['symbols']:
-        if position['symbol'].endswith('BUSD') and position['status'] == 'TRADING' and position['symbol'] not in (
-        "BTCBUSD", "ETHBUSD", "SOLBUSD"):
+        if position['symbol'].endswith('USDT') and position['status'] == 'TRADING' and position['symbol'] not in (
+        "BTCUSDT", "ETHUSDT", "SOLUSDT"):
             incoming_symbol_list.append(position['symbol'])
 
     sql = "select symbol_name from symbols"
