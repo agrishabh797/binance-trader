@@ -695,7 +695,7 @@ def create_position(batch_id, symbol, leverage, each_position_amount, conn, um_f
             # Create Take Profit Order
             create_take_profit_order(symbol, position_id, starting_margin, side_order, conn, um_futures_client, position_side)
             # Create Loss Limit order
-            create_limit_order(symbol, position_id, starting_margin, starting_margin, side, conn, um_futures_client,
+            create_limit_order(symbol, position_id, starting_margin, starting_margin, side_order, conn, um_futures_client,
                                position_side)
             
             logging.info("Created following position")
