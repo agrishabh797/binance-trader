@@ -530,7 +530,7 @@ def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
                 )
             )
             logging.info("Retrying..")
-            time.sleep(1)
+            time.sleep(3)
             n_retry = n_retry - 1
 
     if n_retry == 0:
