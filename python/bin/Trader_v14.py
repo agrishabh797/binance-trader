@@ -146,7 +146,12 @@ def get_order_fee(symbol, order_id, um_futures_client):
     response = um_futures_client.get_account_trades(symbol=symbol, orderId=order_id)
     fee = 0
     for item in response:
-        fee = fee + float(item['commission'])
+        if item['commissionAsset'] == 'BNB':
+            response = um_futures_client.ticker_price(symbol='BNBUSDT')
+            f = float(item['commission']) * float(response['price'])
+        else:
+            f = float(item['commission'])
+        fee = fee + f
     return fee
 
 
@@ -363,7 +368,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
 
         if count < 6 and net_pnl > 0:
             logging.info("Creating a position again with %s side", position_side)
-            create_position(batch_id, symbol, leverage, starting_margin, conn, um_futures_client, side=position_side)
+            create_position(batch_id, symbol, leverage, starting_margin + net_pnl, conn, um_futures_client, side=position_side)
 
     else:
         logging.info("Position is not closed.")
@@ -811,7 +816,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # total_new_positions = 4
     if total_new_positions:
         new_positions_symbols = get_new_positions_symbols(total_new_positions, conn, um_futures_client)
-        each_position_amount = float(total_wallet_amount * 25 / 100) / total_positions
+        each_position_amount = float(total_wallet_amount * 30 / 100) / total_positions
         logging.info("each_position_amount: %s", each_position_amount)
 
         # each_position_amount = float(10)
