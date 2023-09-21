@@ -368,7 +368,10 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
 
         if count < 6 and net_pnl > 0:
             logging.info("Creating a position again with %s side", position_side)
-            create_position(batch_id, symbol, leverage, starting_margin + net_pnl, conn, um_futures_client, side=position_side)
+            try:
+                create_position(batch_id, symbol, leverage, starting_margin * 1.02, conn, um_futures_client, side=position_side)
+            except Exception as e:
+                logging.info("Caught Exception while creating the position, continuing with normal flow")
 
     else:
         logging.info("Position is not closed.")
