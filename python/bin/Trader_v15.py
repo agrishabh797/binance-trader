@@ -31,7 +31,7 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
             position_quantity = abs(float(response['positionAmt']))
 
     total_position_amount = entry_price * position_quantity
-    loss = float((10 * current_margin) / 100)
+    loss = float((5 * current_margin) / 100)
 
     if side == 'BUY':
         loss_position_amount = total_position_amount - loss
@@ -81,8 +81,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     total_position_amount = entry_price * position_quantity
 
     # (25) % of margin is our profit
-    profit = float((10 * current_margin) / 100)
-    stop = float((9 * current_margin) / 100)
+    profit = float((5 * current_margin) / 100)
+    stop = float((4 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -292,7 +292,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
 
     create_opposite_position_flag = False
     create_same_position_flag = False
-
+    manual_close_flag = False
     global text_position
     if current_margin == 0.0:
         # position closed. Let's close the record in DB and update the PNL, fee and status and outstanding orders
@@ -367,7 +367,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         logging.info('avg_margin: %s', str(avg_margin), 'sum_net_pnl: %s', str(sum_net_pnl))
         cursor.close()
 
-        if avg_margin > sum_net_pnl:
+        if avg_margin > sum_net_pnl and not manual_close_flag :
             logging.info("Creating a position again with %s side", position_side)
             try:
                 create_position(batch_id, symbol, leverage, starting_margin * 1.02, conn, um_futures_client, side=position_side)
@@ -809,7 +809,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # new_sell_pos_count = close_pos_count - new_buy_pos_count
     # leverage = (ceil(total_wallet_amount / 150)) + 4
     # leverage = random.randint(10, 20)
-    leverage = 5
+    leverage = 7
     logging.info("open_pos_count: %s", open_pos_count)
     logging.info("total_positions: %s", total_positions)
     logging.info("min_diff: %s", min_diff)
