@@ -363,7 +363,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         cursor.execute(fetch_count)
         obj = cursor.fetchone()
         avg_margin = obj[0]
-        sum_net_pnl = obj[0]
+        sum_net_pnl = obj[1]
         logging.info('avg_margin: %s', str(avg_margin))
         logging.info('sum_net_pnl: %s', str(sum_net_pnl))
         cursor.close()
