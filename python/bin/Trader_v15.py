@@ -392,6 +392,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
             try:
                 create_position(batch_id, symbol, leverage, starting_margin * 1.02, conn, um_futures_client, side=position_side)
             except Exception as e:
+                logging.info(e)
                 logging.info("Caught Exception while creating the position, continuing with normal flow")
 
     else:
