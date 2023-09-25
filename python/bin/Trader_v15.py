@@ -65,8 +65,8 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     )
     logging.info("Limit order response from server.")
     logging.info(response)
-    # new_order_id = response['orderId']
-    insert_order_record(symbol, position_id, response, conn, um_futures_client)
+    new_order_id = response['orderId']
+    insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
 def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side,
@@ -132,8 +132,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     logging.info("Profit order response from server.")
     logging.info(response)
 
-    # new_order_id = response['orderId']
-    insert_order_record(symbol, position_id, response, conn, um_futures_client)
+    new_order_id = response['orderId']
+    insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
 
 
 def get_order_pnl(symbol, order_id, um_futures_client):
@@ -347,12 +347,10 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
             response = um_futures_client.get_all_orders(symbol=symbol)
             if response[-1]['positionSide'] == position_side:
                 closing_order_id = response[-1]['orderId']
-                response = response[-1]
             else:
                 closing_order_id = response[-2]['orderId']
-                response = response[-1]
             logging.info("Position closed with order id %s.", closing_order_id)
-            insert_order_record(symbol, position_id, response, conn, um_futures_client)
+            insert_order_record(symbol, position_id, closing_order_id, conn, um_futures_client)
             manual_close_flag = True
 
         # Closing the position record
@@ -637,13 +635,32 @@ def get_new_positions_symbols(total_new_positions, conn, um_futures_client):
     return new_positions_selected
 
 
-def insert_order_record(symbol, position_id, response, conn, um_futures_client):
+def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
     current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
-    logging.info("Inserting record for orderId %s", response['orderId'])
+    logging.info("Inserting record for orderId %s", order_id)
     postgres_insert_query = """INSERT INTO orders (position_id, src_order_id, side, type, stop_price, avg_price, 
         quantity, total_price, fee, status, order_created_time, order_executed_time, created_ts, updated_ts) VALUES 
         (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
+
+    n_retry = 10
+    while n_retry > 0:
+        try:
+            response = um_futures_client.query_order(symbol=symbol, orderId=order_id)
+            break
+        except ClientError as error:
+            logging.info(
+                "Found error. status: {}, error code: {}, error message: {}".format(
+                    error.status_code, error.error_code, error.error_message
+                )
+            )
+            logging.info("Retrying..")
+            time.sleep(3)
+            n_retry = n_retry - 1
+
+    if n_retry == 0:
+        logging.info("Retries failed. Continuing with next position")
+        return
 
     side = response['side']
     type = response['type']
@@ -655,7 +672,6 @@ def insert_order_record(symbol, position_id, response, conn, um_futures_client):
     total_price = None
     order_created_time = datetime.fromtimestamp(int(response['time']) / 1000).strftime('%Y-%m-%d %H:%M:%S')
     order_executed_time = None
-    order_id = response['orderId']
 
     if status == 'FILLED':
         fee = get_order_fee(symbol, order_id, um_futures_client)
@@ -804,10 +820,10 @@ def create_position(batch_id, symbol, leverage, each_position_amount, conn, um_f
             position_quantity = float(row[3])
             if position_side == 'LONG':
                 side_order = "BUY"
-                insert_order_record(symbol, position_id, response_long, conn, um_futures_client)
+                insert_order_record(symbol, position_id, new_order_id_long, conn, um_futures_client)
             elif position_side == 'SHORT':
                 side_order = "SELL"
-                insert_order_record(symbol, position_id, response_short, conn, um_futures_client)
+                insert_order_record(symbol, position_id, new_order_id_short, conn, um_futures_client)
 
             # Create Take Profit Order
             create_take_profit_order(symbol, position_id, starting_margin, side_order, conn, um_futures_client, position_side)
