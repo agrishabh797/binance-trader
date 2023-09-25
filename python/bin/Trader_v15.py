@@ -19,7 +19,7 @@ import requests
 text_position = ''
 
 
-def create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client, position_side):
+def create_limit_order(symbol, position_id, starting_margin, current_margin, side, conn, um_futures_client, position_side, loss_mark_price=None):
 
     # Create New Order for 25% loss for 50% addition of original margin
     exchange_info = get_exchange_info(symbol, um_futures_client)
@@ -38,8 +38,10 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     elif side == 'SELL':
         loss_position_amount = total_position_amount + loss
 
-    loss_mark_price = float(loss_position_amount / position_quantity)
-    loss_mark_price = round_step_size(loss_mark_price, exchange_info['tickSize'])
+    if not loss_mark_price:
+        loss_mark_price = float(loss_position_amount / position_quantity)
+        loss_mark_price = round_step_size(loss_mark_price, exchange_info['tickSize'])
+
     margin_to_add = float(starting_margin)
 
     purchase_qty = float((margin_to_add * leverage) / loss_mark_price)
@@ -63,8 +65,8 @@ def create_limit_order(symbol, position_id, starting_margin, current_margin, sid
     )
     logging.info("Limit order response from server.")
     logging.info(response)
-    new_order_id = response['orderId']
-    insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
+    # new_order_id = response['orderId']
+    insert_order_record(symbol, position_id, response, conn, um_futures_client)
 
 
 def create_take_profit_order(symbol, position_id, current_margin, side, conn, um_futures_client, position_side,
@@ -130,8 +132,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     logging.info("Profit order response from server.")
     logging.info(response)
 
-    new_order_id = response['orderId']
-    insert_order_record(symbol, position_id, new_order_id, conn, um_futures_client)
+    # new_order_id = response['orderId']
+    insert_order_record(symbol, position_id, response, conn, um_futures_client)
 
 
 def get_order_pnl(symbol, order_id, um_futures_client):
@@ -167,6 +169,20 @@ def get_existing_positions(conn):
     logging.info("Fetched the following position ids")
     logging.info(position_ids)
     return position_ids
+
+
+def get_existing_positions_symbols(conn):
+    sql = "select distinct symbol from positions where position_status in ('OPEN')"
+    logging.info("Running the sql query: %s", sql)
+    cursor = conn.cursor()
+    cursor.execute(sql)
+
+    symbols = cursor.fetchall()
+    cursor.close()
+    symbols = [x[0] for x in symbols]
+    logging.info("Fetched the following symbols")
+    logging.info(symbols)
+    return symbols
 
 
 def close_and_update_order(symbol, order_id, src_order_id, status, conn, um_futures_client):
@@ -331,10 +347,12 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
             response = um_futures_client.get_all_orders(symbol=symbol)
             if response[-1]['positionSide'] == position_side:
                 closing_order_id = response[-1]['orderId']
+                response = response[-1]
             else:
                 closing_order_id = response[-2]['orderId']
+                response = response[-1]
             logging.info("Position closed with order id %s.", closing_order_id)
-            insert_order_record(symbol, position_id, closing_order_id, conn, um_futures_client)
+            insert_order_record(symbol, position_id, response, conn, um_futures_client)
 
         # Closing the position record
 
@@ -357,7 +375,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         text_position = text_position + str(symbol) + " closed with NET PNL " + str(
             round(net_pnl, 4)) + " on " + position_side + " side.\n"
 
-        fetch_count = """ select avg(current_margin), sum(net_pnl) from positions where batch_id = {} and symbol = '{}'""".format(batch_id, symbol)
+        fetch_count = """ select avg(starting_margin), sum(net_pnl) from positions where batch_id = {} and symbol = '{}'""".format(batch_id, symbol)
 
         cursor = conn.cursor()
         cursor.execute(fetch_count)
@@ -368,7 +386,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         logging.info('sum_net_pnl: %s', str(sum_net_pnl))
         cursor.close()
 
-        if avg_margin > sum_net_pnl and not manual_close_flag :
+        if (avg_margin * 2) > sum_net_pnl and not manual_close_flag :
             logging.info("Creating a position again with %s side", position_side)
             try:
                 create_position(batch_id, symbol, leverage, starting_margin * 1.02, conn, um_futures_client, side=position_side)
@@ -405,6 +423,105 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 cursor.close()
                 conn.commit()
                 text_position = text_position + str(symbol) + " updated with limit margin " + str(round(current_margin, 4)) + " on " + position_side + " side.\n"
+
+
+def check_and_create_limit_orders(symbol, conn, um_futures_client):
+    long_sql = """ select id, starting_margin from positions where symbol = '{}' and status = 'OPEN' and side = 'LONG' """.format(symbol)
+    cursor = conn.cursor()
+    cursor.execute(long_sql)
+    long_data = cursor.fetchone()
+    cursor.close()
+    long_pos_id = None
+    long_margin = None
+    if long_data is not None:
+        long_pos_id = long_data[0]
+        long_margin = long_data[1]
+
+    short_sql = """ select id, starting_margin from positions where symbol = '{}' and status = 'OPEN' and side = 'SHORT' """.format(symbol)
+    cursor = conn.cursor()
+    cursor.execute(short_sql)
+    short_data = cursor.fetchone()
+    cursor.close()
+    short_pos_id = None
+    short_margin = None
+    if short_data is not None:
+        short_pos_id = short_data[0]
+        short_margin = short_data[1]
+
+    if long_pos_id and short_pos_id:
+
+        long_profit_sql = """select avg_price from orders o where position_id = {} and type = 'TAKE_PROFIT' and status = 'NEW'""".format(
+            long_pos_id)
+        cursor = conn.cursor()
+        cursor.execute(long_profit_sql)
+        data = cursor.fetchone()
+        cursor.close()
+        long_profit_price = None
+        if data is not None:
+            long_profit_price = data[0]
+
+        short_profit_sql = """select avg_price from orders o where position_id = {} and type = 'TAKE_PROFIT' and status = 'NEW'""".format(
+            short_pos_id)
+        cursor = conn.cursor()
+        cursor.execute(short_profit_sql)
+        data = cursor.fetchone()
+        cursor.close()
+        short_profit_price = None
+        if data is not None:
+            short_profit_price = data[0]
+
+        long_limit_sql = """ select avg_price, status, id, src_order_id  from orders 
+                                                    where position_id = {} and type = 'LIMIT'""".format(
+            long_pos_id)
+        cursor = conn.cursor()
+        cursor.execute(long_limit_sql)
+        data = cursor.fetchone()
+        cursor.close()
+        long_limit_avg_price = None
+        long_limit_status = None
+        long_limit_order_id = None
+        long_limit_src_order_id = None
+        if data is not None:
+            long_limit_avg_price = data[0]
+            long_limit_status = data[1]
+            long_limit_order_id = data[2]
+            long_limit_src_order_id = data[3]
+
+        short_limit_sql = """ select avg_price, status, id, src_order_id from orders 
+                                                            where position_id = {} and type = 'LIMIT'""".format(
+            short_pos_id)
+        cursor = conn.cursor()
+        cursor.execute(short_limit_sql)
+        data = cursor.fetchone()
+        cursor.close()
+        short_limit_avg_price = None
+        short_limit_status = None
+        short_limit_order_id = None
+        short_limit_src_order_id = None
+        if data is not None:
+            short_limit_avg_price = data[0]
+            short_limit_status = data[1]
+            short_limit_order_id = data[2]
+            short_limit_src_order_id = data[3]
+
+        if not long_limit_avg_price:
+            create_limit_order(symbol, long_pos_id, long_margin, long_margin, 'BUY', conn,
+                               um_futures_client, 'LONG', short_profit_price)
+
+        elif long_limit_status == 'NEW' and short_profit_price != long_limit_avg_price:
+            close_and_update_order(symbol, long_limit_order_id, long_limit_src_order_id, 'CANCEL', conn, um_futures_client)
+            create_limit_order(symbol, long_pos_id, long_margin, long_margin, 'BUY', conn,
+                               um_futures_client, 'LONG', short_profit_price)
+
+        if not short_limit_avg_price:
+            create_limit_order(symbol, short_pos_id, short_margin, short_margin, 'SELL', conn,
+                               um_futures_client, 'SHORT', long_profit_price)
+
+        elif short_limit_status == 'NEW' and long_profit_price != short_limit_avg_price:
+            close_and_update_order(symbol, short_limit_order_id, short_limit_src_order_id, 'CANCEL', conn,
+                                   um_futures_client)
+            create_limit_order(symbol, short_pos_id, short_margin, short_margin, 'BUY', conn,
+                               um_futures_client, 'SHORT', long_profit_price)
 
 
 def get_utilized_wallet_amount(conn):
@@ -512,32 +629,13 @@ def get_new_positions_symbols(total_new_positions, conn, um_futures_client):
     return new_positions_selected
 
 
-def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
+def insert_order_record(symbol, position_id, response, conn, um_futures_client):
     current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
-    logging.info("Inserting record for orderId %s", order_id)
+    logging.info("Inserting record for orderId %s", response['orderId'])
     postgres_insert_query = """INSERT INTO orders (position_id, src_order_id, side, type, stop_price, avg_price, 
         quantity, total_price, fee, status, order_created_time, order_executed_time, created_ts, updated_ts) VALUES 
         (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
-
-    n_retry = 3
-    while n_retry > 0:
-        try:
-            response = um_futures_client.query_order(symbol=symbol, orderId=order_id)
-            break
-        except ClientError as error:
-            logging.info(
-                "Found error. status: {}, error code: {}, error message: {}".format(
-                    error.status_code, error.error_code, error.error_message
-                )
-            )
-            logging.info("Retrying..")
-            time.sleep(3)
-            n_retry = n_retry - 1
-
-    if n_retry == 0:
-        logging.info("Retries failed. Continuing with next position")
-        return
 
     side = response['side']
     type = response['type']
@@ -549,6 +647,7 @@ def insert_order_record(symbol, position_id, order_id, conn, um_futures_client):
     total_price = None
     order_created_time = datetime.fromtimestamp(int(response['time']) / 1000).strftime('%Y-%m-%d %H:%M:%S')
     order_executed_time = None
+    order_id = response['orderId']
 
     if status == 'FILLED':
         fee = get_order_fee(symbol, order_id, um_futures_client)
@@ -643,24 +742,24 @@ def create_position(batch_id, symbol, leverage, each_position_amount, conn, um_f
                 fee_incurred, net_pnl, created_ts, updated_ts, batch_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) """
 
     if side == "BOTH" or side == "LONG":
-        response = um_futures_client.new_order(
+        response_long = um_futures_client.new_order(
             symbol=symbol,
             side="BUY",
             type="MARKET",
             positionSide="LONG",
             quantity=purchase_qty,
         )
-        new_order_id_long = response['orderId']
+        new_order_id_long = response_long['orderId']
 
     if side == "BOTH" or side == "SHORT":
-        response = um_futures_client.new_order(
+        response_short = um_futures_client.new_order(
             symbol=symbol,
             side="SELL",
             type="MARKET",
             positionSide="SHORT",
             quantity=purchase_qty,
         )
-        new_order_id_short = response['orderId']
+        new_order_id_short = response_short['orderId']
 
     responses = um_futures_client.get_position_risk(symbol=symbol)
     for response in responses:
@@ -697,16 +796,15 @@ def create_position(batch_id, symbol, leverage, each_position_amount, conn, um_f
             position_quantity = float(row[3])
             if position_side == 'LONG':
                 side_order = "BUY"
-                insert_order_record(symbol, position_id, new_order_id_long, conn, um_futures_client)
+                insert_order_record(symbol, position_id, response_long, conn, um_futures_client)
             elif position_side == 'SHORT':
                 side_order = "SELL"
-                insert_order_record(symbol, position_id, new_order_id_short, conn, um_futures_client)
+                insert_order_record(symbol, position_id, response_short, conn, um_futures_client)
 
             # Create Take Profit Order
             create_take_profit_order(symbol, position_id, starting_margin, side_order, conn, um_futures_client, position_side)
             # Create Loss Limit order
-            create_limit_order(symbol, position_id, starting_margin, starting_margin, side_order, conn, um_futures_client,
-                               position_side)
+            # create_limit_order(symbol, position_id, starting_margin, starting_margin, side_order, conn, um_futures_client, position_side)
             
             logging.info("Created following position")
             logging.info("Position Id: %s", str(position_id))
@@ -911,9 +1009,13 @@ def main():
 
     logging.info("Checking Existing Positions from Database")
     position_ids = get_existing_positions(conn)
+    open_position_symbols = get_existing_positions_symbols(conn)
 
     for position_id, side in position_ids:
         check_current_status_and_update(position_id, conn, um_futures_client, side)
+
+    for symbol in open_position_symbols:
+        check_and_create_limit_orders(symbol, conn, um_futures_client)
 
     logging.info("Checking if we can create New Positions: ")
 
