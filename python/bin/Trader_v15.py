@@ -426,7 +426,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
 
 
 def check_and_create_limit_orders(symbol, conn, um_futures_client):
-    long_sql = """ select id, starting_margin from positions where symbol = '{}' and status = 'OPEN' and side = 'LONG' """.format(symbol)
+    long_sql = """ select id, starting_margin from positions where symbol = '{}' and position_status = 'OPEN' and side = 'LONG' """.format(symbol)
     cursor = conn.cursor()
     cursor.execute(long_sql)
     long_data = cursor.fetchone()
@@ -437,7 +437,7 @@ def check_and_create_limit_orders(symbol, conn, um_futures_client):
         long_pos_id = long_data[0]
         long_margin = long_data[1]
 
-    short_sql = """ select id, starting_margin from positions where symbol = '{}' and status = 'OPEN' and side = 'SHORT' """.format(symbol)
+    short_sql = """ select id, starting_margin from positions where symbol = '{}' and position_status = 'OPEN' and side = 'SHORT' """.format(symbol)
     cursor = conn.cursor()
     cursor.execute(short_sql)
     short_data = cursor.fetchone()
