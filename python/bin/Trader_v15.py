@@ -941,7 +941,6 @@ def create_new_positions(max_positions, conn, um_futures_client):
     total_new_positions = total_positions - (ceil(open_pos_count / 2))
     logging.info("total_new_positions: %s", total_new_positions)
     # total_new_positions = 4
-    total_new_positions = 1
     if total_new_positions:
         new_positions_symbols = get_new_positions_symbols(total_new_positions, conn, um_futures_client)
         each_position_amount = float(total_wallet_amount * 30 / 100) / total_positions
@@ -986,7 +985,17 @@ def send_telegram(message, telegram_token):
         print(e)
 
 
+lock_file = "/home/ubuntu/.secure/trader_script.lock"
+
+
 def main():
+    if os.path.exists(lock_file):
+        print("Previous run is still in progress. Waiting...")
+        while os.path.exists(lock_file):
+            time.sleep(1)
+    else:
+        open(lock_file, "w").close()  # Create the lock file
+
     # Set the config parameters using the config file
     current_time = datetime.now()
     current_timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
@@ -1034,13 +1043,10 @@ def main():
 
     logging.info("Checking Existing Positions from Database")
     position_ids = get_existing_positions(conn)
-    open_position_symbols = get_existing_positions_symbols(conn)
+
 
     for position_id, side in position_ids:
         check_current_status_and_update(position_id, conn, um_futures_client, side)
-
-    for symbol in open_position_symbols:
-        check_and_create_limit_orders(symbol, conn, um_futures_client)
 
     logging.info("Checking if we can create New Positions: ")
 
@@ -1050,6 +1056,10 @@ def main():
     max_positions = 20
     create_new_positions(max_positions, conn, um_futures_client)
 
+    open_position_symbols = get_existing_positions_symbols(conn)
+    for symbol in open_position_symbols:
+        check_and_create_limit_orders(symbol, conn, um_futures_client)
+
     conn.commit()
     conn.close()
 
@@ -1058,6 +1068,8 @@ def main():
     if text_position:
         telegram_token = get_db_details(connections_file, 'TELEGRAM')['TOKEN']
         send_telegram(text_position, telegram_token)
+
+    os.remove(lock_file)  # Remove the lock file when done
 
 
 if __name__ == "__main__":
