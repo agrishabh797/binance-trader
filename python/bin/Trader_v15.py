@@ -505,19 +505,25 @@ def check_and_create_limit_orders(symbol, conn, um_futures_client):
             short_limit_src_order_id = data[3]
 
         if not long_limit_avg_price:
+            logging.info('Limit order does not exist for long side. Creating a limit order')
             create_limit_order(symbol, long_pos_id, long_margin, long_margin, 'BUY', conn,
                                um_futures_client, 'LONG', short_profit_price)
 
         elif long_limit_status == 'NEW' and short_profit_price != long_limit_avg_price:
+            logging.info('Limit order exists for long side but the short side profit price is different.')
+            logging.info('Cancelling and creating a new limit order')
             close_and_update_order(symbol, long_limit_order_id, long_limit_src_order_id, 'CANCEL', conn, um_futures_client)
             create_limit_order(symbol, long_pos_id, long_margin, long_margin, 'BUY', conn,
                                um_futures_client, 'LONG', short_profit_price)
 
         if not short_limit_avg_price:
+            logging.info('Limit order does not exist for short side. Creating a limit order')
             create_limit_order(symbol, short_pos_id, short_margin, short_margin, 'SELL', conn,
                                um_futures_client, 'SHORT', long_profit_price)
 
         elif short_limit_status == 'NEW' and long_profit_price != short_limit_avg_price:
+            logging.info('Limit order exists for short side but the long side profit price is different.')
+            logging.info('Cancelling and creating a new limit order')
             close_and_update_order(symbol, short_limit_order_id, short_limit_src_order_id, 'CANCEL', conn,
                                    um_futures_client)
             create_limit_order(symbol, short_pos_id, short_margin, short_margin, 'BUY', conn,
