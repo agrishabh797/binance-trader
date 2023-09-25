@@ -353,6 +353,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
                 response = response[-1]
             logging.info("Position closed with order id %s.", closing_order_id)
             insert_order_record(symbol, position_id, response, conn, um_futures_client)
+            manual_close_flag = True
 
         # Closing the position record
 
