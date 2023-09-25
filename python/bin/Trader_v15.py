@@ -435,7 +435,7 @@ def check_and_create_limit_orders(symbol, conn, um_futures_client):
     long_margin = None
     if long_data is not None:
         long_pos_id = long_data[0]
-        long_margin = long_data[1]
+        long_margin = float(long_data[1])
 
     short_sql = """ select id, starting_margin from positions where symbol = '{}' and position_status = 'OPEN' and side = 'SHORT' """.format(symbol)
     cursor = conn.cursor()
@@ -446,7 +446,7 @@ def check_and_create_limit_orders(symbol, conn, um_futures_client):
     short_margin = None
     if short_data is not None:
         short_pos_id = short_data[0]
-        short_margin = short_data[1]
+        short_margin = float(short_data[1])
 
     if long_pos_id and short_pos_id:
 
@@ -458,7 +458,7 @@ def check_and_create_limit_orders(symbol, conn, um_futures_client):
         cursor.close()
         long_profit_price = None
         if data is not None:
-            long_profit_price = data[0]
+            long_profit_price = float(data[0])
 
         short_profit_sql = """select avg_price from orders o where position_id = {} and type = 'TAKE_PROFIT' and status = 'NEW'""".format(
             short_pos_id)
@@ -468,7 +468,7 @@ def check_and_create_limit_orders(symbol, conn, um_futures_client):
         cursor.close()
         short_profit_price = None
         if data is not None:
-            short_profit_price = data[0]
+            short_profit_price = float(data[0])
 
         long_limit_sql = """ select avg_price, status, id, src_order_id  from orders 
                                                     where position_id = {} and type = 'LIMIT'""".format(
@@ -482,7 +482,7 @@ def check_and_create_limit_orders(symbol, conn, um_futures_client):
         long_limit_order_id = None
         long_limit_src_order_id = None
         if data is not None:
-            long_limit_avg_price = data[0]
+            long_limit_avg_price = float(data[0])
             long_limit_status = data[1]
             long_limit_order_id = data[2]
             long_limit_src_order_id = data[3]
@@ -499,7 +499,7 @@ def check_and_create_limit_orders(symbol, conn, um_futures_client):
         short_limit_order_id = None
         short_limit_src_order_id = None
         if data is not None:
-            short_limit_avg_price = data[0]
+            short_limit_avg_price = float(data[0])
             short_limit_status = data[1]
             short_limit_order_id = data[2]
             short_limit_src_order_id = data[3]
