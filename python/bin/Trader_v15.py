@@ -917,6 +917,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     total_new_positions = total_positions - (ceil(open_pos_count / 2))
     logging.info("total_new_positions: %s", total_new_positions)
     # total_new_positions = 4
+    total_new_positions = 1
     if total_new_positions:
         new_positions_symbols = get_new_positions_symbols(total_new_positions, conn, um_futures_client)
         each_position_amount = float(total_wallet_amount * 30 / 100) / total_positions
