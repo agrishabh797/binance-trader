@@ -83,8 +83,8 @@ def create_take_profit_order(symbol, position_id, current_margin, side, conn, um
     total_position_amount = entry_price * position_quantity
 
     # (25) % of margin is our profit
-    profit = float((3 * current_margin) / 100)
-    stop = float((2.5 * current_margin) / 100)
+    profit = float((4 * current_margin) / 100)
+    stop = float((3.5 * current_margin) / 100)
 
     if side == 'BUY':
         profit_position_amount = total_position_amount + profit
@@ -388,7 +388,7 @@ def check_current_status_and_update(position_id, conn, um_futures_client, positi
         if (avg_margin * 2) > sum_net_pnl and not manual_close_flag :
             logging.info("Creating a position again with %s side", position_side)
             try:
-                create_position(batch_id, symbol, leverage, starting_margin * 1.03, conn, um_futures_client, side=position_side)
+                create_position(batch_id, symbol, leverage, starting_margin * 1.05, conn, um_futures_client, side=position_side)
             except Exception as e:
                 logging.info(e)
                 logging.info("Caught Exception while creating the position, continuing with normal flow")
@@ -904,7 +904,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # update
     # global total_positions
     total_wallet_amount = get_total_wallet_amount(conn, um_futures_client)
-    total_positions = (ceil(total_wallet_amount / 100)) * 3
+    total_positions = (ceil(total_wallet_amount / 100)) * 2
     # total_positions = 4
     max_open_positions = total_positions * 2
     cursor = conn.cursor()
@@ -932,7 +932,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # new_sell_pos_count = close_pos_count - new_buy_pos_count
     # leverage = (ceil(total_wallet_amount / 150)) + 4
     # leverage = random.randint(10, 20)
-    leverage = 10
+    leverage = 5
     logging.info("open_pos_count: %s", open_pos_count)
     logging.info("total_positions: %s", total_positions)
     logging.info("min_diff: %s", min_diff)
@@ -943,7 +943,7 @@ def create_new_positions(max_positions, conn, um_futures_client):
     # total_new_positions = 4
     if total_new_positions:
         new_positions_symbols = get_new_positions_symbols(total_new_positions, conn, um_futures_client)
-        each_position_amount = float(total_wallet_amount * 40 / 100) / total_positions
+        each_position_amount = float(total_wallet_amount * 30 / 100) / total_positions
         logging.info("each_position_amount: %s", each_position_amount)
 
         # each_position_amount = float(10)
